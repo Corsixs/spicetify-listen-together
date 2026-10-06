@@ -1,0 +1,8 @@
+# Copias de seguridad locales
+*.bak
+*.bak-*
+
+# Archivos del sistema
+Thumbs.db
+desktop.ini
+.DS_Store
