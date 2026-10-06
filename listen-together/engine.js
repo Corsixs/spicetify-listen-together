@@ -2,8 +2,76 @@
 // Se carga al arrancar Spotify (subfiles_extension): conexión, sincronización, sugerencias,
 // menú contextual y la sesión guardada para volver a la sala al reabrir Spotify.
 // La interfaz (index.js) lo usa a través de window.ListenTogether.
+// Si se instaló una versión más nueva con el botón "Actualizar", se ejecuta esa en lugar de esta.
+// Red de seguridad: si la descargada no arranca, se descarta y se vuelve a la instalada.
 (function () {
+  if (window.__LT_OVERRIDE_RUNNING) return; // este código ya es la versión descargada
+  var BUILD = 7;
+  var KEY = "listen-together:update";
+  var BOOT = "listen-together:update-booting";
+  try {
+    var up = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (!up) return;
+    if (!(up.version > BUILD) || typeof up.engine !== "string") {
+      // La instalada ya es igual o más nueva: la descargada sobra
+      localStorage.removeItem(KEY);
+      localStorage.removeItem(BOOT);
+      return;
+    }
+    if (localStorage.getItem(BOOT) === String(up.version)) {
+      // El arranque anterior con esta versión no terminó bien
+      localStorage.removeItem(KEY);
+      localStorage.removeItem(BOOT);
+      console.warn("[Listen Together] la versión " + up.version + " falló al arrancar; se usa la instalada");
+      return;
+    }
+    localStorage.setItem(BOOT, String(up.version));
+    window.__LT_OVERRIDE_RUNNING = up.version;
+    var s = document.createElement("script");
+    s.textContent = up.engine + "\n//# sourceURL=listen-together-engine-v" + up.version + ".js";
+    (document.head || document.documentElement).appendChild(s);
+    if (window.__LT_OVERRIDE_STARTED) {
+      window.__LT_BUILTIN_SKIPPED = true;
+      // Vigilante: si con Spotify listo la descargada no llega a arrancar, se vuelve a la instalada ya
+      var since = Date.now();
+      (function watch() {
+        if (window.ListenTogether) return;
+        var S = window.Spicetify;
+        var ready = S && S.Player && S.Player.addEventListener && S.Platform && S.CosmosAsync && window.Peer;
+        if (!ready || Date.now() - since < 20000) {
+          setTimeout(watch, 2000);
+          return;
+        }
+        console.warn("[Listen Together] la versión " + up.version + " no arrancó; se usa la instalada");
+        localStorage.removeItem(KEY);
+        localStorage.removeItem(BOOT);
+        window.__LT_OVERRIDE_RUNNING = 0;
+        window.__LT_BUILTIN_SKIPPED = false;
+        if (window.__LT_RUN_BUILTIN) window.__LT_RUN_BUILTIN();
+      })();
+    } else {
+      // Ni siquiera empezó (error de sintaxis): se descarta y sigue la instalada
+      window.__LT_OVERRIDE_RUNNING = 0;
+      localStorage.removeItem(KEY);
+      localStorage.removeItem(BOOT);
+    }
+  } catch (e) {
+    window.__LT_OVERRIDE_RUNNING = 0;
+    console.warn("[Listen Together] no se pudo cargar la actualización", e);
+  }
+})();
+
+(function ltMain() {
 "use strict";
+if (window.__LT_BUILTIN_SKIPPED && !ltMain.force) {
+  // Ya corre la versión descargada; esta queda de reserva para el vigilante
+  window.__LT_RUN_BUILTIN = function () {
+    ltMain.force = true;
+    ltMain();
+  };
+  return;
+}
+if (window.__LT_OVERRIDE_RUNNING) window.__LT_OVERRIDE_STARTED = true;
 
 function hashStr(s) {
   let h = 0;
@@ -289,7 +357,7 @@ function fmt(ms) {
 // Desfase tolerado antes de corregir la posición del invitado
 const DRIFT_MS = 1000;
 // Se envía en el "hello" para detectar invitados con una versión vieja de la app
-const APP_VERSION = 6;
+const APP_VERSION = 7;
 
 // La sala se guarda para retomarla al reabrir Spotify
 const SESSION_KEY = "listen-together:session";
@@ -316,6 +384,14 @@ function getClientId() {
     return genCode() + genCode();
   }
 }
+
+// Actualizaciones: solo desde este repositorio y solo cuando el usuario pulsa "Actualizar"
+const UPDATE_KEY = "listen-together:update";
+const UPDATE_BOOT_KEY = "listen-together:update-booting";
+const REPO_RAW = "https://raw.githubusercontent.com/Corsixs/spicetify-listen-together/main/";
+const UPDATE_FILES = { engine: "listen-together/engine.js", ui: "listen-together/index.js", css: "listen-together/style.css" };
+const UPDATE_MAX_BYTES = 1024 * 1024;
+const UPDATE_CHECK_MS = 6 * 60 * 60 * 1000;
 
 const ICE = [
   { urls: "stun:stun.l.google.com:19302" },
@@ -346,6 +422,8 @@ const Engine = {
   lastSeen: {},
   peerCid: {},
   creator: false,
+  updateAvailable: null,
+  updating: false,
   resuming: null,
   reconnecting: null,
   lastHostMsgAt: 0,
@@ -486,6 +564,64 @@ const Engine = {
     this.emit("resume");
   },
 
+  // ---------- Actualizaciones ----------
+  checkForUpdate: function () {
+    const self = this;
+    return Promise.resolve()
+      .then(function () { return race(fetch(REPO_RAW + "version.json?t=" + Date.now(), { cache: "no-store" }), 10000); })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (v) {
+        if (!v || typeof v.version !== "number" || !(v.version > APP_VERSION)) return;
+        self.updateAvailable = { version: v.version, notes: clip(v.notes, 200) };
+        self.emit("update");
+      })
+      .catch(function () {});
+  },
+
+  installUpdate: function () {
+    const up = this.updateAvailable;
+    if (!up || this.updating) return Promise.resolve("No hay ninguna actualización disponible");
+    const self = this;
+    this.updating = true;
+    this.emit("update");
+    function get(path) {
+      return Promise.resolve()
+        .then(function () { return race(fetch(REPO_RAW + path + "?t=" + Date.now(), { cache: "no-store" }), 20000); })
+        .then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.text();
+        })
+        .then(function (t) {
+          if (!t || t.length > UPDATE_MAX_BYTES) throw new Error("tamaño inesperado");
+          return t;
+        });
+    }
+    return Promise.all([get(UPDATE_FILES.engine), get(UPDATE_FILES.ui), get(UPDATE_FILES.css)])
+      .then(function (f) {
+        // Archivos completos y de la versión anunciada (evita instalar algo a medio subir)
+        if (f[0].indexOf("const APP_VERSION = " + up.version + ";") < 0 || f[0].indexOf("window.ListenTogether = {") < 0) {
+          throw new Error("engine.js no corresponde a la versión " + up.version);
+        }
+        if (f[1].indexOf("const UI_BUILD = " + up.version + ";") < 0 || f[1].indexOf("function render()") < 0) {
+          throw new Error("index.js no corresponde a la versión " + up.version);
+        }
+        localStorage.setItem(UPDATE_KEY, JSON.stringify({
+          version: up.version, engine: f[0], ui: f[1], css: f[2], installedAt: Date.now()
+        }));
+        localStorage.removeItem(UPDATE_BOOT_KEY);
+        // Se guarda la sala para volver a ella tras recargar
+        self.saveSession();
+        setTimeout(function () { window.location.reload(); }, 300);
+        return null;
+      })
+      .catch(function (e) {
+        console.warn("[Listen Together] la actualización falló:", e);
+        self.updating = false;
+        self.emit("update");
+        return "No se pudo actualizar. Inténtalo más tarde.";
+      });
+  },
+
   // Invitado: el anfitrión se fue (cerró Spotify, se cayó la red…); se espera a que vuelva
   startReconnect: function () {
     if (this.reconnecting || !this.code) return;
@@ -587,10 +723,20 @@ const Engine = {
     this.broadcastSuggestions();
   },
 
+  clearSuggestions: function () {
+    if (!this.isHost || !this.suggestions.length) return;
+    this.suggestions = [];
+    this.broadcastSuggestions();
+  },
+
   playSuggestion: function (id) {
     if (!this.isHost) return;
     const it = this.suggestions.find(function (s) { return s.id === id; });
-    if (!it) return;
+    if (!it) {
+      // La interfaz mostraba algo que ya no existe: se resincroniza
+      this.emit("suggestions");
+      return;
+    }
     try { Spicetify.Player.playUri(it.uri); } catch (e) { console.error(e); }
     this.removeSuggestion(id);
     this.announce("▶ " + this.localName + " puso " + it.name + " (sugerida por " + it.by + ")");
@@ -601,7 +747,10 @@ const Engine = {
     if (!this.isHost) return Promise.resolve("Solo el anfitrión maneja la cola");
     const self = this;
     const it = this.suggestions.find(function (s) { return s.id === id; });
-    if (!it) return Promise.resolve(null);
+    if (!it) {
+      this.emit("suggestions");
+      return Promise.resolve("Esa sugerencia ya no existe");
+    }
     return resolveTrackUris(it.uri).then(function (uris) {
       if (!uris.length) throw new Error("vacío");
       return addUrisToQueue(uris).then(function () {
@@ -1337,11 +1486,19 @@ function init() {
     playerState: playerState,
     fmt: fmt,
     suggestUris: suggestUris,
-    addPlayerHooks: addPlayerHooks
+    addPlayerHooks: addPlayerHooks,
+    UPDATE_KEY: UPDATE_KEY,
+    UPDATE_BOOT_KEY: UPDATE_BOOT_KEY
   };
   addPlayerHooks();
   registerContextMenu();
   Engine.resumeSession();
+  // La versión descargada arrancó bien: se quita la marca de "arrancando"
+  if (window.__LT_OVERRIDE_RUNNING) {
+    try { localStorage.removeItem(UPDATE_BOOT_KEY); } catch (e) {}
+  }
+  setTimeout(function () { Engine.checkForUpdate(); }, 8000);
+  setInterval(function () { Engine.checkForUpdate(); }, UPDATE_CHECK_MS);
 }
 
 init();

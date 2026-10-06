@@ -10,8 +10,9 @@ Incluye además un arreglo para la extensión **Cat-Jam Synced**, para que el ga
 - **Sincronización** de canción, posición y pausa, con compensación de latencia.
 - **Cualquiera puede pausar o reanudar**, y el chat avisa quién lo hizo. Cambiar o adelantar canciones es solo del anfitrión.
 - **Chat** dentro de la sala.
-- **Sugerencias:** los invitados proponen canciones, álbumes o playlists (con clic derecho → *Sugerir en Listen Together*, pegando un enlace o arrastrando). El anfitrión decide si las reproduce ahora o las añade a la cola.
+- **Sugerencias:** los invitados proponen canciones, álbumes o playlists (con clic derecho → *Sugerir en Listen Together*, pegando un enlace o arrastrando). El anfitrión decide si las reproduce ahora o las añade a la cola, y puede limpiar la lista.
 - **Perfiles:** foto y nombre de Spotify de cada persona; al hacer clic se abre su perfil.
+- **Actualización con un clic** desde Spotify cuando hay una versión nueva en este repositorio.
 - **Reanudación automática:** si se cierra Spotify estando en una sala, al volver a abrirlo se retoma la misma sala. Los invitados esperan hasta 3 minutos a que el anfitrión vuelva.
 - El anfitrión puede expulsar a alguien o pasarle el control de la sala.
 
@@ -52,7 +53,18 @@ Spotify eliminó los datos de tempo que usaba **Cat-Jam Synced**, así que el ga
 
 ## Actualizar
 
-Reemplaza la carpeta `listen-together` con la nueva versión y ejecuta `spicetify apply`. Si alguien de la sala tiene una versión vieja, debajo de su nombre aparece *"Versión antigua de la app"*.
+**Desde Spotify (versión 7 o posterior):** cuando hay una versión nueva en este repositorio, Listen Together muestra el aviso *"Hay una versión nueva de Listen Together"*. Al pulsar **Actualizar**, descarga la versión nueva de este repositorio y recarga Spotify. Si estabas en una sala, vuelves a entrar automáticamente.
+
+- Solo descarga de este repositorio, por HTTPS, y nunca sin que pulses el botón.
+- Si la versión descargada falla al arrancar, se descarta sola y vuelve la que tenías instalada. Si falla la pantalla, aparece un botón *"Volver a la versión instalada"*.
+
+**A mano:** reemplaza la carpeta `listen-together` con la nueva versión y ejecuta `spicetify apply`. También sirve si vienes de una versión anterior a la 7, que no tiene el botón.
+
+Si alguien de la sala tiene una versión vieja, debajo de su nombre aparece *"Versión antigua de la app"*.
+
+### Para quien mantiene el repositorio
+
+Al publicar una versión nueva, sube el mismo número en los tres sitios: `var BUILD` y `const APP_VERSION` en `engine.js`, `const UI_BUILD` en `index.js`, y `version` en [`version.json`](version.json). El botón comprueba que los archivos descargados correspondan a ese número antes de instalarlos.
 
 ## Notas
 

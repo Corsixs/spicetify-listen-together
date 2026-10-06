@@ -3,6 +3,11 @@
 const react = Spicetify.React;
 const { useState, useEffect, useRef } = react;
 
+// Debe coincidir con APP_VERSION de engine.js
+const UI_BUILD = 7;
+const UPDATE_KEY = "listen-together:update";
+const UPDATE_BOOT_KEY = "listen-together:update-booting";
+
 const STROKED = {
   headphones: [
     ["path", { d: "M3 18v-6a9 9 0 0 1 18 0v6" }],
@@ -122,6 +127,9 @@ function App() {
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(Engine.reconnecting ? WAITING_HOST : null);
   const [resuming, setResuming] = useState(Engine.resuming);
+  const [update, setUpdate] = useState(Engine.updateAvailable);
+  const [updating, setUpdating] = useState(Engine.updating);
+  const [updateErr, setUpdateErr] = useState(null);
   const [isHost, setIsHost] = useState(inRoom && Engine.isHost);
   const [roomCode, setRoomCode] = useState(inRoom ? Engine.code : "");
   const [roomName, setRoomName] = useState(inRoom ? Engine.roomName : "");
@@ -151,6 +159,8 @@ function App() {
       setTab("menu");
       setChat([]);
       setParticipants([]);
+      setSuggestions([]);
+      setSuggestInput("");
       setRoomCode("");
       setNotice(null);
       setError(null);
@@ -182,6 +192,10 @@ function App() {
     Engine.on("error", function (msg) {
       setError(msg);
       setNotice(msg);
+    });
+    Engine.on("update", function () {
+      setUpdate(Engine.updateAvailable);
+      setUpdating(Engine.updating);
     });
     Engine.on("resume", function () {
       setResuming(Engine.resuming);
@@ -230,6 +244,8 @@ function App() {
     setTab("menu");
     setChat([]);
     setParticipants([]);
+    setSuggestions([]);
+    setSuggestInput("");
     setRoomCode("");
     setNotice(null);
     setError(null);
@@ -255,6 +271,8 @@ function App() {
       setRoomName(Engine.roomName);
       setIsHost(true);
       setParticipants(Engine.participants.slice());
+      setSuggestions(Engine.suggestions.slice());
+      setChat(Engine.chatLog.slice());
       setView("room");
     }).catch(function (err) {
       setError(err && err.message ? err.message : "No se pudo crear la sala");
@@ -279,6 +297,8 @@ function App() {
       });
     }).then(function () {
       setParticipants(Engine.participants.slice());
+      setSuggestions(Engine.suggestions.slice());
+      setChat(Engine.chatLog.slice());
       setView("room");
     }).catch(function (err) {
       setError(err && err.message ? err.message : "No se pudo unir a la sala");
@@ -366,8 +386,23 @@ function App() {
     setChatInput("");
   }
 
+  const updateBanner = update && react.createElement("div", { className: "lt-update" },
+    react.createElement("span", { className: "lt-update-text" },
+      updating
+        ? "Descargando la versión " + update.version + "…"
+        : "Hay una versión nueva de Listen Together" + (update.notes ? ": " + update.notes : "")),
+    !updating && react.createElement("button", {
+      className: "lt-update-btn",
+      onClick: function () {
+        setUpdateErr(null);
+        Engine.installUpdate().then(function (err) { if (err) setUpdateErr(err); });
+      }
+    }, "Actualizar"),
+    updateErr && react.createElement("span", { className: "lt-update-err" }, updateErr));
+
   if (view === "lobby") {
     return react.createElement("div", { className: "lt-app" },
+      updateBanner,
       react.createElement("div", { className: "lt-hero" },
         react.createElement("div", { className: "lt-logo" }, icon("headphones", 38)),
         react.createElement("h1", null, "Listen Together"),
@@ -570,7 +605,17 @@ function App() {
         react.createElement("div", { className: "lt-panel-h" },
           icon("list", 15),
           react.createElement("h3", null, "Sugerencias"),
-          react.createElement("span", { className: "lt-count" }, suggestions.length)),
+          react.createElement("span", { className: "lt-count" }, suggestions.length),
+          react.createElement("button", {
+            className: "lt-sg-clear",
+            title: "Borrar todas las sugerencias",
+            onClick: function () {
+              const n = suggestions.length;
+              if (window.confirm("¿Borrar " + (n === 1 ? "la sugerencia" : "las " + n + " sugerencias") + "?")) {
+                Engine.clearSuggestions();
+              }
+            }
+          }, "Limpiar")),
         react.createElement("div", { className: "lt-sg-list" }, suggestList))
     : react.createElement("div", {
     className: "lt-panel lt-suggest" + (dragOver ? " is-drop" : ""),
@@ -651,6 +696,7 @@ function App() {
           copied ? icon("check", 15) : icon("copy", 15),
           react.createElement("b", null, copied ? "Copiado" : "Copiar")),
         react.createElement("button", { className: "lt-icon-btn lt-leave", onClick: resetToLobby, title: "Salir" }, icon("x", 16)))),
+    updateBanner,
     notice && react.createElement("div", { className: "lt-notice" }, notice),
     react.createElement("div", { className: "lt-room-grid" },
       react.createElement("div", { className: "lt-main" }, stage, suggestPanel),
@@ -677,6 +723,66 @@ function Loader() {
       react.createElement("p", { className: "lt-sub" }, "Cargando Listen Together…")));
 }
 
+// ¿Hay una interfaz descargada (botón "Actualizar") que corresponda al motor que está corriendo?
+function overrideRender() {
+  if (typeof __LT_IS_OVERRIDE !== "undefined") return null; // esta ya es la descargada
+  const v = window.__LT_OVERRIDE_RUNNING;
+  if (!v || !(v > UI_BUILD)) return null;
+  if (!window.__LT_UI) {
+    let up = null;
+    try { up = JSON.parse(localStorage.getItem(UPDATE_KEY) || "null"); } catch (e) {}
+    if (!up || up.version !== v || typeof up.ui !== "string") return null;
+    try {
+      if (typeof up.css === "string" && !document.getElementById("lt-update-css")) {
+        const st = document.createElement("style");
+        st.id = "lt-update-css";
+        st.textContent = up.css;
+        document.head.appendChild(st);
+      }
+      const s = document.createElement("script");
+      s.textContent = "(function () {\nconst __LT_IS_OVERRIDE = true;\n" + up.ui +
+        "\nwindow.__LT_UI = { render: render };\n})();\n//# sourceURL=listen-together-ui-v" + v + ".js";
+      document.head.appendChild(s);
+    } catch (e) {
+      return null;
+    }
+  }
+  return window.__LT_UI ? window.__LT_UI.render : null;
+}
+
+function revertToInstalled() {
+  try {
+    localStorage.removeItem(UPDATE_KEY);
+    localStorage.removeItem(UPDATE_BOOT_KEY);
+  } catch (e) {}
+  window.location.reload();
+}
+
+// Si la interfaz descargada falla, se ofrece volver a la instalada
+const SafeOverride = react.Component && class SafeOverride extends react.Component {
+  constructor(props) {
+    super(props);
+    this.state = { failed: false };
+  }
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(e) {
+    console.error("[Listen Together] la versión actualizada falló:", e);
+  }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return react.createElement("div", { className: "lt-app" },
+      react.createElement("div", { className: "lt-hero" },
+        react.createElement("h2", null, "La versión actualizada falló"),
+        react.createElement("p", { className: "lt-sub" }, "Puedes volver a la versión que tenías instalada."),
+        react.createElement("button", { className: "lt-btn lt-btn-primary", onClick: revertToInstalled },
+          "Volver a la versión instalada")));
+  }
+};
+
 function render() {
+  const ov = overrideRender();
+  if (ov) return SafeOverride ? react.createElement(SafeOverride, null, ov()) : ov();
   return react.createElement(Loader);
 }

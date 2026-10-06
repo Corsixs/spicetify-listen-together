@@ -941,3 +941,58 @@
 @keyframes ltSpin {
   to { transform: rotate(360deg); }
 }
+
+.lt-sg-clear {
+  margin-left: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--lt-card-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--lt-dim);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.lt-sg-clear:hover {
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.45);
+  background: rgba(255, 107, 107, 0.08);
+}
+
+/* ---------- Aviso de actualización ---------- */
+.lt-update {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 auto 18px;
+  max-width: 900px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(29, 185, 84, 0.35);
+  background: rgba(29, 185, 84, 0.1);
+  font-size: 0.88rem;
+}
+
+.lt-update-text {
+  flex: 1;
+  min-width: 200px;
+}
+
+.lt-update-btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 999px;
+  font-weight: 800;
+  cursor: pointer;
+  color: #04120a;
+  background: linear-gradient(135deg, var(--lt-green-bright), var(--lt-green));
+}
+
+.lt-update-err {
+  width: 100%;
+  color: #ff6b6b;
+  font-size: 0.8rem;
+}
