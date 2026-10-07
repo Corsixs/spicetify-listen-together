@@ -4,8 +4,7 @@
   "preview": "assets/preview.png",
   "readme": "README.md",
   "authors": [
-    { "name": "Corsixs", "url": "https://github.com/Corsixs" },
-    { "name": "josehtz (Listen Together original)", "url": "https://github.com/josehtz" }
+    { "name": "Corsixs", "url": "https://github.com/Corsixs" }
   ],
   "tags": ["listen-together", "p2p", "party", "sync", "chat", "español"]
 }
