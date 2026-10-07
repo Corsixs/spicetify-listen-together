@@ -87,16 +87,16 @@ function iconFill(name, size) {
 }
 
 // La lógica vive en engine.js (cargado al arrancar Spotify); aquí solo la interfaz
-let Engine, APP_VERSION, t, lang, hashStr, genCode, safeAvatar, safeUser, getSpotifyProfile, parseSpotifyRef, cleanSuggestion, fetchItemMeta, openProfile, trackMeta, playerState, fmt, suggestUris, addPlayerHooks;
+let Engine, APP_VERSION, tx, lang, hashStr, genCode, safeAvatar, safeUser, getSpotifyProfile, parseSpotifyRef, cleanSuggestion, fetchItemMeta, openProfile, trackMeta, playerState, fmt, suggestUris, addPlayerHooks;
 
 function bindEngine() {
   const L = window.ListenTogether;
   if (!L) return false;
-  ({ Engine, APP_VERSION, t, lang, hashStr, genCode, safeAvatar, safeUser, getSpotifyProfile, parseSpotifyRef, cleanSuggestion, fetchItemMeta, openProfile, trackMeta, playerState, fmt, suggestUris, addPlayerHooks } = L);
+  ({ Engine, APP_VERSION, t: tx, lang, hashStr, genCode, safeAvatar, safeUser, getSpotifyProfile, parseSpotifyRef, cleanSuggestion, fetchItemMeta, openProfile, trackMeta, playerState, fmt, suggestUris, addPlayerHooks } = L);
   return true;
 }
 
-// Lo que se ve antes de que engine.js esté listo; después todo usa t() del engine
+// Lo que se ve antes de que engine.js esté listo; después todo usa tx() del engine
 const BOOT_TEXT = {
   es: {
     loading: "Cargando Listen Together…",
@@ -147,7 +147,7 @@ function App() {
   const [codeInput, setCodeInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [notice, setNotice] = useState(Engine.reconnecting ? t("waiting_host") : null);
+  const [notice, setNotice] = useState(Engine.reconnecting ? tx("waiting_host") : null);
   const [resuming, setResuming] = useState(Engine.resuming);
   const [update, setUpdate] = useState(Engine.updateAvailable);
   const [updating, setUpdating] = useState(Engine.updating);
@@ -223,14 +223,14 @@ function App() {
       setResuming(Engine.resuming);
     });
     Engine.on("reconnecting", function () {
-      setNotice(t("waiting_host"));
+      setNotice(tx("waiting_host"));
     });
     Engine.on("disconnected", function () {
-      setNotice(t("host_gone"));
+      setNotice(tx("host_gone"));
       setTimeout(goLobby, 2500);
     });
     Engine.on("kicked", function () {
-      setNotice(t("kicked"));
+      setNotice(tx("kicked"));
       setTimeout(goLobby, 2500);
     });
     Engine.on("track", function () {
@@ -280,9 +280,9 @@ function App() {
     setError(null);
     setLoading(true);
     getSpotifyProfile().then(function (prof) {
-      const n = prof.name || t("default_host");
+      const n = prof.name || tx("default_host");
       return Engine.createRoom({
-        roomName: t("room_of", { name: n }),
+        roomName: tx("room_of", { name: n }),
         displayName: n,
         avatar: prof.avatar,
         user: prof.user,
@@ -297,14 +297,14 @@ function App() {
       setChat(Engine.chatLog.slice());
       setView("room");
     }).catch(function (err) {
-      setError(err && err.message ? err.message : t("create_failed"));
+      setError(err && err.message ? err.message : tx("create_failed"));
     }).finally(function () { setLoading(false); });
   }
 
   function handleJoin(e) {
     e.preventDefault();
     if (!codeInput.trim()) {
-      setError(t("enter_code"));
+      setError(tx("enter_code"));
       return;
     }
     setError(null);
@@ -312,7 +312,7 @@ function App() {
     getSpotifyProfile().then(function (prof) {
       return Engine.joinRoom({
         code: codeInput,
-        displayName: prof.name || t("default_guest"),
+        displayName: prof.name || tx("default_guest"),
         avatar: prof.avatar,
         user: prof.user,
         password: pw.trim() || null
@@ -323,12 +323,12 @@ function App() {
       setChat(Engine.chatLog.slice());
       setView("room");
     }).catch(function (err) {
-      setError(err && err.message ? err.message : t("join_failed"));
+      setError(err && err.message ? err.message : tx("join_failed"));
     }).finally(function () { setLoading(false); });
   }
 
   function copyInvite() {
-    const text = t("invite", { code: roomCode });
+    const text = tx("invite", { code: roomCode });
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text);
     } else {
@@ -371,7 +371,7 @@ function App() {
 
   function addSuggestions(uris) {
     if (!uris.length) {
-      flashSuggestMsg(t("paste_link"), true);
+      flashSuggestMsg(tx("paste_link"), true);
       return;
     }
     setSuggestBusy(true);
@@ -411,15 +411,15 @@ function App() {
   const updateBanner = update && react.createElement("div", { className: "lt-update" },
     react.createElement("span", { className: "lt-update-text" },
       updating
-        ? t("downloading", { v: update.version })
-        : t("update_available") + (update.notes && lang() === "es" ? ": " + update.notes : "")),
+        ? tx("downloading", { v: update.version })
+        : tx("update_available") + (update.notes && lang() === "es" ? ": " + update.notes : "")),
     !updating && react.createElement("button", {
       className: "lt-update-btn",
       onClick: function () {
         setUpdateErr(null);
         Engine.installUpdate().then(function (err) { if (err) setUpdateErr(err); });
       }
-    }, t("update_btn")),
+    }, tx("update_btn")),
     updateErr && react.createElement("span", { className: "lt-update-err" }, updateErr));
 
   if (view === "lobby") {
@@ -429,20 +429,20 @@ function App() {
         react.createElement("div", { className: "lt-logo" }, icon("headphones", 38)),
         react.createElement("h1", null, "Listen Together"),
         react.createElement("p", { className: "lt-sub" },
-          t("lobby_sub")),
+          tx("lobby_sub")),
         resuming
           ? react.createElement("div", { className: "lt-card lt-resume" },
               react.createElement("div", { className: "lt-spinner" }),
-              react.createElement("h2", null, t("returning")),
+              react.createElement("h2", null, tx("returning")),
               react.createElement("p", { className: "lt-sub" },
                 resuming.asHost
-                  ? t("reopening", { code: resuming.code })
-                  : t("connecting_to", { code: resuming.code })),
+                  ? tx("reopening", { code: resuming.code })
+                  : tx("connecting_to", { code: resuming.code })),
               react.createElement("button", {
                 type: "button",
                 className: "lt-btn lt-btn-ghost",
                 onClick: function () { Engine.cancelResume(); }
-              }, t("cancel")))
+              }, tx("cancel")))
           : tab === "create" || tab === "join"
           ? react.createElement("form", {
               className: "lt-card lt-form",
@@ -452,43 +452,43 @@ function App() {
                 type: "button",
                 className: "lt-back",
                 onClick: function () { setTab("menu"); setError(null); }
-              }, icon("arrowLeft", 15), react.createElement("span", null, t("back"))),
-              react.createElement("h2", null, tab === "create" ? t("create_room") : t("join_room")),
+              }, icon("arrowLeft", 15), react.createElement("span", null, tx("back"))),
+              react.createElement("h2", null, tab === "create" ? tx("create_room") : tx("join_room")),
               tab === "join" && react.createElement("div", { className: "lt-field" },
-                react.createElement("label", null, t("room_id")),
+                react.createElement("label", null, tx("room_id")),
                 react.createElement("input", {
                   type: "text",
                   value: codeInput,
                   onChange: function (e) { setCodeInput(e.target.value.toUpperCase()); },
-                  placeholder: t("room_id_ph"),
+                  placeholder: tx("room_id_ph"),
                   autoFocus: true
                 })),
               react.createElement("div", { className: "lt-field" },
                 react.createElement("label", null,
-                  t("password"),
-                  tab === "create" ? t("optional") : ""),
+                  tx("password"),
+                  tab === "create" ? tx("optional") : ""),
                 react.createElement("input", {
                   type: "password",
                   value: pw,
                   onChange: function (e) { setPw(e.target.value); },
-                  placeholder: tab === "create" ? t("pw_ph_create") : t("pw_ph_join")
+                  placeholder: tab === "create" ? tx("pw_ph_create") : tx("pw_ph_join")
                 })),
               error && react.createElement("div", { className: "lt-error" }, error),
               react.createElement("button", {
                 type: "submit",
                 className: "lt-btn lt-btn-primary",
                 disabled: loading
-              }, loading ? t("connecting") : tab === "create" ? t("create_room") : t("join"))
+              }, loading ? tx("connecting") : tab === "create" ? tx("create_room") : tx("join"))
             )
           : react.createElement("div", { className: "lt-actions" },
               react.createElement("button", {
                 className: "lt-btn lt-btn-primary lt-btn-big",
                 onClick: function () { setTab("create"); setError(null); }
-              }, icon("plus", 20), react.createElement("span", null, t("create_room"))),
+              }, icon("plus", 20), react.createElement("span", null, tx("create_room"))),
               react.createElement("button", {
                 className: "lt-btn lt-btn-ghost lt-btn-big",
                 onClick: function () { setTab("join"); setError(null); }
-              }, react.createElement("span", null, t("join_with_id")), icon("arrowRight", 20))
+              }, react.createElement("span", null, tx("join_with_id")), icon("arrowRight", 20))
             ),
         error && tab === "menu" && react.createElement("div", { className: "lt-error" }, error)
       )
@@ -508,7 +508,7 @@ function App() {
         return react.createElement("div", { key: p.id, className: "lt-p" },
           react.createElement("div", {
             className: "lt-p-link" + (user ? " is-clickable" : ""),
-            title: user ? t("view_profile", { name: p.name }) : undefined,
+            title: user ? tx("view_profile", { name: p.name }) : undefined,
             onClick: user ? function () { openProfile(user); } : undefined
           },
           react.createElement(Avatar, { name: p.name, src: p.avatar, host: isRoomHost }),
@@ -516,27 +516,27 @@ function App() {
             react.createElement("span", { className: "lt-p-name" }, p.name),
             react.createElement("span", {
               className: "lt-p-status" + (isRoomHost ? " is-host" : outdated ? " is-old" : ""),
-              title: outdated ? t("outdated_hint") : undefined
-            }, isRoomHost ? t("host") : outdated ? t("outdated") : t("in_room")))),
+              title: outdated ? tx("outdated_hint") : undefined
+            }, isRoomHost ? tx("host") : outdated ? tx("outdated") : tx("in_room")))),
           isHost && !isRoomHost && !isSelf &&
             react.createElement("div", { className: "lt-p-actions" },
               react.createElement("button", {
                 className: "lt-icon-btn",
-                title: t("kick"),
+                title: tx("kick"),
                 onClick: function () { Engine.kick(p.id); }
               }, icon("ban", 14)),
               react.createElement("button", {
                 className: "lt-icon-btn",
-                title: t("make_host"),
+                title: tx("make_host"),
                 onClick: function () {
-                  if (window.confirm(t("confirm_transfer", { name: p.name }))) {
+                  if (window.confirm(tx("confirm_transfer", { name: p.name }))) {
                     Engine.transferHost(p.id);
                   }
                 }
               }, icon("crown", 14)))
         );
       })
-    : react.createElement("div", { className: "lt-empty" }, t("nobody_else"));
+    : react.createElement("div", { className: "lt-empty" }, tx("nobody_else"));
 
   const stage = react.createElement("div", { className: "lt-stage" },
     displayTrack
@@ -551,9 +551,9 @@ function App() {
       : react.createElement("div", { className: "lt-track lt-track-empty" },
           react.createElement("div", { className: "lt-art lt-art-ph" }, icon("music", 54)),
           react.createElement("div", { className: "lt-meta" },
-            react.createElement("div", { className: "lt-track-name" }, t("nothing_playing")),
+            react.createElement("div", { className: "lt-track-name" }, tx("nothing_playing")),
             react.createElement("div", { className: "lt-track-art" },
-              isHost ? t("play_something") : t("waiting_for_host")))),
+              isHost ? tx("play_something") : tx("waiting_for_host")))),
     react.createElement("div", { className: "lt-player" },
       react.createElement("div", { className: "lt-bar" },
         react.createElement("div", { className: "lt-bar-fill", style: { width: pct + "%" } }),
@@ -573,10 +573,10 @@ function App() {
         react.createElement("button", {
           className: "lt-play",
           onClick: togglePlay,
-          title: playing ? t("pause_all") : t("resume_all")
+          title: playing ? tx("pause_all") : tx("resume_all")
         }, iconFill(playing ? "pause" : "play", 24)),
         react.createElement("div", { className: "lt-host-hint" },
-          isHost ? t("you_control") : t("guest_hint"))))
+          isHost ? tx("you_control") : tx("guest_hint"))))
   );
 
   const myId = Engine.peer && Engine.peer.id;
@@ -595,49 +595,49 @@ function App() {
           react.createElement("div", { className: "lt-sg-info" },
             react.createElement("span", { className: "lt-sg-name", title: it.name }, it.name),
             react.createElement("span", { className: "lt-sg-sub" },
-              t("type_" + it.type) + (it.sub ? " · " + it.sub : "")),
-            react.createElement("span", { className: "lt-sg-by" }, t("suggested_by", { name: it.by }))),
+              tx("type_" + it.type) + (it.sub ? " · " + it.sub : "")),
+            react.createElement("span", { className: "lt-sg-by" }, tx("suggested_by", { name: it.by }))),
           react.createElement("div", { className: "lt-sg-actions" },
             isHost && react.createElement("button", {
               className: "lt-sg-play",
-              title: t("play_now"),
+              title: tx("play_now"),
               onClick: function () { Engine.playSuggestion(it.id); }
             }, iconFill("play", 16)),
             isHost && react.createElement("button", {
               className: "lt-icon-btn lt-sg-queue",
-              title: it.type === "track" ? t("add_queue") : t("add_queue_all"),
+              title: it.type === "track" ? tx("add_queue") : tx("add_queue_all"),
               onClick: function () {
                 Engine.queueSuggestion(it.id).then(function (err) {
                   if (err) Spicetify.showNotification(err, true);
-                  else Spicetify.showNotification(t("added_queue"));
+                  else Spicetify.showNotification(tx("added_queue"));
                 });
               }
             }, icon("queue", 15)),
             canRemove && react.createElement("button", {
               className: "lt-icon-btn",
-              title: t("remove"),
+              title: tx("remove"),
               onClick: function () { Engine.removeSuggestion(it.id); }
             }, icon("x", 14))));
       })
-    : react.createElement("div", { className: "lt-empty" }, t("suggest_empty"));
+    : react.createElement("div", { className: "lt-empty" }, tx("suggest_empty"));
 
   // El anfitrión solo ve la lista (para ponerlas); sugerir es cosa de los invitados
   const suggestPanel = isHost
     ? suggestions.length > 0 && react.createElement("div", { className: "lt-panel lt-suggest" },
         react.createElement("div", { className: "lt-panel-h" },
           icon("list", 15),
-          react.createElement("h3", null, t("suggestions")),
+          react.createElement("h3", null, tx("suggestions")),
           react.createElement("span", { className: "lt-count" }, suggestions.length),
           react.createElement("button", {
             className: "lt-sg-clear",
-            title: t("clear_all_title"),
+            title: tx("clear_all_title"),
             onClick: function () {
               const n = suggestions.length;
-              if (window.confirm(n === 1 ? t("clear_one") : t("clear_many", { n: n }))) {
+              if (window.confirm(n === 1 ? tx("clear_one") : tx("clear_many", { n: n }))) {
                 Engine.clearSuggestions();
               }
             }
-          }, t("clear"))),
+          }, tx("clear"))),
         react.createElement("div", { className: "lt-sg-list" }, suggestList))
     : react.createElement("div", {
     className: "lt-panel lt-suggest" + (dragOver ? " is-drop" : ""),
@@ -649,25 +649,25 @@ function App() {
   },
     react.createElement("div", { className: "lt-panel-h" },
       icon("list", 15),
-      react.createElement("h3", null, t("suggestions")),
+      react.createElement("h3", null, tx("suggestions")),
       react.createElement("span", { className: "lt-count" }, suggestions.length)),
     react.createElement("form", { className: "lt-chat-in lt-sg-form", onSubmit: submitSuggestion },
       react.createElement("input", {
         type: "text",
         value: suggestInput,
-        placeholder: t("suggest_ph"),
+        placeholder: tx("suggest_ph"),
         onChange: function (e) { setSuggestInput(e.target.value); }
       }),
       react.createElement("button", {
         type: "submit",
         className: "lt-send",
-        title: t("suggest_btn"),
+        title: tx("suggest_btn"),
         disabled: suggestBusy
       }, icon("plus", 16))),
     suggestMsg
       ? react.createElement("div", { className: "lt-sg-msg" + (suggestMsg.error ? " is-error" : "") }, suggestMsg.text)
       : react.createElement("div", { className: "lt-sg-hint" },
-          t("suggest_hint")),
+          tx("suggest_hint")),
     react.createElement("div", { className: "lt-sg-list" }, suggestList)
   );
 
@@ -675,7 +675,7 @@ function App() {
     react.createElement("div", { className: "lt-panel" },
       react.createElement("div", { className: "lt-panel-h" },
         icon("users", 15),
-        react.createElement("h3", null, t("in_room")),
+        react.createElement("h3", null, tx("in_room")),
         react.createElement("span", { className: "lt-count" }, participants.length)),
       react.createElement("div", { className: "lt-ps" }, participantList)),
     react.createElement("div", { className: "lt-panel lt-chat" + (chatOpen ? "" : " collapsed") },
@@ -684,9 +684,9 @@ function App() {
         onClick: function () { setChatOpen(!chatOpen); }
       },
         icon("message", 15),
-        react.createElement("h3", null, t("chat"))),
+        react.createElement("h3", null, tx("chat"))),
       chatOpen && react.createElement("div", { className: "lt-chat-log" },
-        chat.length === 0 && react.createElement("div", { className: "lt-empty" }, t("no_messages")),
+        chat.length === 0 && react.createElement("div", { className: "lt-empty" }, tx("no_messages")),
         chat.map(function (m, i) {
           if (m.sys) return react.createElement("div", { key: i, className: "lt-msg-sys" }, String(m.text || ""));
           return react.createElement("div", { key: i, className: "lt-msg" },
@@ -698,26 +698,26 @@ function App() {
         react.createElement("input", {
           type: "text",
           value: chatInput,
-          placeholder: t("message_ph"),
+          placeholder: tx("message_ph"),
           onChange: function (e) { setChatInput(e.target.value); }
         }),
-        react.createElement("button", { type: "submit", className: "lt-send", title: t("send") }, icon("send", 16)))
+        react.createElement("button", { type: "submit", className: "lt-send", title: tx("send") }, icon("send", 16)))
     )
   );
 
   return react.createElement("div", { className: "lt-app lt-room" },
     react.createElement("div", { className: "lt-topbar" },
       react.createElement("div", { className: "lt-room-title" },
-        react.createElement("h2", null, roomName || t("room")),
+        react.createElement("h2", null, roomName || tx("room")),
         react.createElement("span", { className: "lt-live" },
           react.createElement("i", { className: "lt-dot" }),
-          t("live"))),
+          tx("live"))),
       react.createElement("div", { className: "lt-top-actions" },
-        react.createElement("button", { className: "lt-code-chip", onClick: copyInvite, title: t("copy_invite") },
+        react.createElement("button", { className: "lt-code-chip", onClick: copyInvite, title: tx("copy_invite") },
           react.createElement("span", null, roomCode),
           copied ? icon("check", 15) : icon("copy", 15),
-          react.createElement("b", null, copied ? t("copied") : t("copy"))),
-        react.createElement("button", { className: "lt-icon-btn lt-leave", onClick: resetToLobby, title: t("leave") }, icon("x", 16)))),
+          react.createElement("b", null, copied ? tx("copied") : tx("copy"))),
+        react.createElement("button", { className: "lt-icon-btn lt-leave", onClick: resetToLobby, title: tx("leave") }, icon("x", 16)))),
     updateBanner,
     notice && react.createElement("div", { className: "lt-notice" }, notice),
     react.createElement("div", { className: "lt-room-grid" },
@@ -744,12 +744,12 @@ const AppBoundary = react.Component && class AppBoundary extends react.Component
     const self = this;
     return react.createElement("div", { className: "lt-app" },
       react.createElement("div", { className: "lt-hero" },
-        react.createElement("h2", null, t("ui_failed")),
-        react.createElement("p", { className: "lt-sub" }, t("still_connected")),
+        react.createElement("h2", null, tx("ui_failed")),
+        react.createElement("p", { className: "lt-sub" }, tx("still_connected")),
         react.createElement("button", {
           className: "lt-btn lt-btn-primary",
           onClick: function () { self.setState({ failed: false }); }
-        }, t("retry"))));
+        }, tx("retry"))));
   }
 };
 
