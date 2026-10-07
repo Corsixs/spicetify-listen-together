@@ -58,4 +58,4 @@ if ! "$SPICETIFY" apply; then
   echo "spicetify apply fallo. Lee el mensaje de arriba; si Spotify se actualizo hace poco, suele arreglarse con: spicetify restore backup apply" >&2
   exit 1
 fi
-echo "Listo. En Spotify aparece \"Listen Together\", con el icono de una nota musical."
+echo "Listo. En Spotify, el boton pequeno con una nota musical junto a las flechas abre Listen Together."

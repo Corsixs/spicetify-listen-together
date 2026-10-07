@@ -16,7 +16,7 @@ App para [Spicetify](https://spicetify.app) que permite escuchar la misma músic
 - **Perfiles:** foto y nombre de Spotify de cada persona; al hacer clic se abre su perfil.
 - **Actualización con un clic** desde Spotify cuando hay una versión nueva en este repositorio.
 - **Reanudación automática:** si se cierra Spotify estando en una sala, al volver a abrirlo se retoma la misma sala. Los invitados esperan hasta 3 minutos a que el anfitrión vuelva.
-- **Botón en la barra superior de Spotify:** se pone verde mientras estás en una sala (ámbar si se está reconectando) y al pulsarlo abre la app.
+- **Botón pequeño en la barra superior de Spotify**, junto a las flechas ← →: se pone verde mientras estás en una sala (ámbar si se está reconectando) y al pulsarlo abre la app.
 - **En español o inglés**, según el idioma de Spotify.
 - El anfitrión puede expulsar a alguien o pasarle el control de la sala.
 
@@ -61,7 +61,7 @@ curl -fsSL https://raw.githubusercontent.com/Corsixs/spicetify-listen-together/m
 
 El instalador descarga la última versión de este repositorio, la copia en la carpeta `CustomApps` de Spicetify, la activa y ejecuta `spicetify apply`, que reinicia Spotify. Si estabas en una sala, vuelves a entrar sola. Sirve también para actualizar o reparar la instalación, y no toca nada más. Puedes leer lo que hace en [`install.ps1`](install.ps1) e [`install.sh`](install.sh).
 
-Al terminar, en Spotify aparece **Listen Together**, con el icono de una nota musical.
+Al terminar, en Spotify aparece un botón pequeño con una nota musical junto a las flechas ← →. Al pulsarlo se abre **Listen Together**.
 
 ### A mano
 
@@ -83,7 +83,7 @@ Al terminar, en Spotify aparece **Listen Together**, con el icono de una nota mu
    spicetify apply
    ```
 
-4. En Spotify aparece **Listen Together**, con el icono de una nota musical.
+4. En Spotify aparece un botón pequeño con una nota musical junto a las flechas ← →. Al pulsarlo se abre **Listen Together**.
 
 ## Actualizar
 

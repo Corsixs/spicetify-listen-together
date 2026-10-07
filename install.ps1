@@ -71,5 +71,5 @@
         Write-Host 'spicetify apply fallo. Lee el mensaje de arriba; si Spotify se actualizo hace poco, suele arreglarse con: spicetify restore backup apply' -ForegroundColor Red
         return
     }
-    Write-Host 'Listo. En Spotify aparece "Listen Together", con el icono de una nota musical.' -ForegroundColor Green
+    Write-Host 'Listo. En Spotify, el boton pequeno con una nota musical junto a las flechas abre Listen Together.' -ForegroundColor Green
 }
