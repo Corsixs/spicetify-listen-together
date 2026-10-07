@@ -1,10 +1,10 @@
 {
-  "version": 10,
-  "notes": "Queda solo el botón pequeño de la barra superior (el que se pone verde en una sala); se quita el acceso grande",
+  "version": 11,
+  "notes": "Spotify ya no ofrece guardar la contraseña de la sala al unirte o crearla",
   "files": {
-    "engine": "ec3edfda65493d970181f242d62f321fd0a4318bf91c2a7c9bada466a41a29f3",
-    "ui": "4c3e275050c1c17c26fc21cd519b0db10463cb6f474345bc3c89d23b413a51d1",
+    "engine": "918b35b00fc469bc5c5300f7c1f82031302a219dffcc15440bd1052896409b2b",
+    "ui": "985242f2b6ea27e4f3c3f8a1bcde88ff330d6ad2b0009e1b37993e956b020fab",
     "css": "7e1c94301c4055da24f5485b16bf2340f670f9090383c53bcf6ef3394ed57693"
   },
-  "sig": "7yAD9dMMyoLoEUaePb6hc7PosupRitRJeTeGWC8cNShc+GFTs2QzIXeo1hmTItEKBVg8UQk26tGNwI7C7VgEcQ=="
+  "sig": "DGOt/wXcnU+dMp3Y1HFBp3rJWdwwE5cvt5W2GAyiN38YifnaREYDL+SfPDUnzpUbd/jWvfIApER07gtaD/A25Q=="
 }

@@ -4,7 +4,7 @@ const react = Spicetify.React;
 const { useState, useEffect, useRef } = react;
 
 // Debe coincidir con APP_VERSION de engine.js
-const UI_BUILD = 10;
+const UI_BUILD = 11;
 const UPDATE_KEY = "listen-together:update";
 const UPDATE_BOOT_KEY = "listen-together:update-booting";
 
@@ -459,6 +459,8 @@ function App() {
                 react.createElement("input", {
                   type: "text",
                   value: codeInput,
+                  autoComplete: "off",
+                  spellCheck: false,
                   onChange: function (e) { setCodeInput(e.target.value.toUpperCase()); },
                   placeholder: tx("room_id_ph"),
                   autoFocus: true
@@ -467,9 +469,16 @@ function App() {
                 react.createElement("label", null,
                   tx("password"),
                   tab === "create" ? tx("optional") : ""),
+                // Texto con puntos en vez de type="password": así el navegador de Spotify no
+                // ofrece "guardar contraseña" (tomaba el ID de la sala como usuario)
                 react.createElement("input", {
-                  type: "password",
+                  type: "text",
                   value: pw,
+                  autoComplete: "off",
+                  autoCorrect: "off",
+                  autoCapitalize: "off",
+                  spellCheck: false,
+                  style: pw ? { WebkitTextSecurity: "disc" } : undefined,
                   onChange: function (e) { setPw(e.target.value); },
                   placeholder: tab === "create" ? tx("pw_ph_create") : tx("pw_ph_join")
                 })),

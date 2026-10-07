@@ -6,7 +6,7 @@
 // Red de seguridad: si la descargada no arranca, se descarta y se vuelve a la instalada.
 (function () {
   if (window.__LT_OVERRIDE_RUNNING) return; // este código ya es la versión descargada
-  var BUILD = 10;
+  var BUILD = 11;
   var KEY = "listen-together:update";
   var BOOT = "listen-together:update-booting";
   try {
@@ -800,7 +800,7 @@ function fmt(ms) {
 // Desfase tolerado antes de corregir la posición del invitado
 const DRIFT_MS = 1000;
 // Se envía en el "hello" para detectar invitados con una versión vieja de la app
-const APP_VERSION = 10;
+const APP_VERSION = 11;
 
 // Límites contra abusos de quien tenga el código de la sala
 const MAX_PENDING = 10;            // conexiones que aún no se identificaron
