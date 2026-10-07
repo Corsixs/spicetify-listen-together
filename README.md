@@ -6,8 +6,6 @@ App para [Spicetify](https://spicetify.app) que permite escuchar la misma músic
 
 ![Una sala: la canción actual, las sugerencias, quién está en la sala y el chat](assets/preview.png)
 
-Incluye además un arreglo para la extensión **Cat-Jam Synced**, para que el gato vuelva a bailar al ritmo de la canción.
-
 ## Funciones
 
 - **Salas con código** y contraseña opcional.
@@ -22,7 +20,7 @@ Incluye además un arreglo para la extensión **Cat-Jam Synced**, para que el ga
 
 ## Cambios respecto al original
 
-La app de josehtz ya tenía las salas P2P con código, la sincronización de canción, posición y pausa, el chat, la contraseña opcional y los botones para expulsar y pasar el control. Esta versión añade:
+Esta versión añade:
 
 - **La sala no se pierde al cambiar de pestaña.** La conexión vive en `engine.js`, que se carga al arrancar Spotify, e `index.js` solo dibuja la interfaz.
 - **Perfiles de Spotify** en lugar de escribir un nombre: foto y nombre de cada persona, y su perfil al hacer clic.
@@ -83,22 +81,6 @@ Al terminar, en Spotify aparece **Listen Together**, con el icono de una nota mu
 
 4. En Spotify aparece **Listen Together**, con el icono de una nota musical.
 
-### Arreglo del gato (opcional)
-
-Spotify eliminó los datos de tempo que usaba **Cat-Jam Synced**, así que el gato bailaba siempre a la misma velocidad. Este arreglo obtiene el BPM de la API pública de Deezer. Las consultas (título, artista e ISRC de la canción) pasan por el proxy CORS de Spicetify, sin datos de tu cuenta.
-
-1. Instala **Cat-Jam Synced** desde el Marketplace de Spicetify.
-2. Copia [`extensions/audiodata-fix.js`](extensions/audiodata-fix.js) en `%APPDATA%\spicetify\Extensions` (en macOS y Linux, en la subcarpeta `Extensions` de `spicetify path userdata`).
-3. Ejecuta:
-
-   ```bash
-   spicetify config extensions audiodata-fix.js
-   ```
-
-   ```bash
-   spicetify apply
-   ```
-
 ## Actualizar
 
 **Desde Spotify (versión 7 o posterior):** cuando hay una versión nueva en este repositorio, Listen Together muestra el aviso *"Hay una versión nueva de Listen Together"*. Al pulsar **Actualizar**, descarga la versión nueva de este repositorio y recarga Spotify. Si estabas en una sala, vuelves a entrar automáticamente.
@@ -147,7 +129,6 @@ Lo que no cubre:
 
 - [Listen Together](https://github.com/josehtz/spicetify-listen-together), de [josehtz](https://github.com/josehtz) (licencia MIT): la app original en la que se basa este proyecto.
 - [PeerJS](https://github.com/peers/peerjs) (licencia MIT): ver [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-- [Cat-Jam Synced](https://github.com/BlafKing/spicetify-cat-jam-synced), de BlafKing. La idea de usar Deezer como fuente del BPM viene de una propuesta de la comunidad en ese repositorio.
 
 ## Licencia
 
