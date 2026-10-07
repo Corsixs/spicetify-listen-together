@@ -1,10 +1,10 @@
 {
-  "version": 9,
-  "notes": "Inglés y español según el idioma de Spotify, y un botón en la barra superior que se pone verde mientras estás en una sala",
+  "version": 10,
+  "notes": "Queda solo el botón pequeño de la barra superior (el que se pone verde en una sala); se quita el acceso grande",
   "files": {
-    "engine": "66f829dac8861cb2bff5cf947c71ee905bf553587f3395daea6fccdcd5ae884a",
-    "ui": "10edd1d16bc23009b2d391e1b74f67467e74b0f1bfc0e066bff0047c664e15d0",
+    "engine": "ec3edfda65493d970181f242d62f321fd0a4318bf91c2a7c9bada466a41a29f3",
+    "ui": "4c3e275050c1c17c26fc21cd519b0db10463cb6f474345bc3c89d23b413a51d1",
     "css": "7e1c94301c4055da24f5485b16bf2340f670f9090383c53bcf6ef3394ed57693"
   },
-  "sig": "FgUq8+hJRNaxAVyKYMIA3R1CHUskvwAFrP9dVfhp/Fy+gDJXewzLI34qECB0CFp4HX/Pj+KRS1x8/JgAwmM97A=="
+  "sig": "7yAD9dMMyoLoEUaePb6hc7PosupRitRJeTeGWC8cNShc+GFTs2QzIXeo1hmTItEKBVg8UQk26tGNwI7C7VgEcQ=="
 }

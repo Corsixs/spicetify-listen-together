@@ -4,7 +4,7 @@ const react = Spicetify.React;
 const { useState, useEffect, useRef } = react;
 
 // Debe coincidir con APP_VERSION de engine.js
-const UI_BUILD = 9;
+const UI_BUILD = 10;
 const UPDATE_KEY = "listen-together:update";
 const UPDATE_BOOT_KEY = "listen-together:update-booting";
 

@@ -6,7 +6,7 @@
 // Red de seguridad: si la descargada no arranca, se descarta y se vuelve a la instalada.
 (function () {
   if (window.__LT_OVERRIDE_RUNNING) return; // este código ya es la versión descargada
-  var BUILD = 9;
+  var BUILD = 10;
   var KEY = "listen-together:update";
   var BOOT = "listen-together:update-booting";
   try {
@@ -800,7 +800,7 @@ function fmt(ms) {
 // Desfase tolerado antes de corregir la posición del invitado
 const DRIFT_MS = 1000;
 // Se envía en el "hello" para detectar invitados con una versión vieja de la app
-const APP_VERSION = 9;
+const APP_VERSION = 10;
 
 // Límites contra abusos de quien tenga el código de la sala
 const MAX_PENDING = 10;            // conexiones que aún no se identificaron
@@ -2154,9 +2154,24 @@ function setupTopbar() {
     topbarButton = null;
     return;
   }
+  hideNavLink();
   updateTopbar();
   // Por si algún cambio de estado no pasa por emit()
   setInterval(updateTopbar, 3000);
+}
+
+// Con el botón pequeño ya no hace falta el acceso grande que Spicetify añade a la navegación
+// para cada custom app. Solo se oculta si el botón pequeño existe, para no quedar sin acceso.
+function hideNavLink() {
+  try {
+    if (document.getElementById("lt-hide-navlink")) return;
+    const st = document.createElement("style");
+    st.id = "lt-hide-navlink";
+    st.textContent =
+      '.custom-navlink[aria-label="Listen Together"],' +
+      'li.main-yourLibraryX-navItem:has([aria-label="Listen Together"]) { display: none !important; }';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (e) {}
 }
 
 function init() {
