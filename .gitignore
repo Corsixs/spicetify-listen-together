@@ -2,6 +2,10 @@
 *.bak
 *.bak-*
 
+# Claves privadas (la de firmar actualizaciones vive fuera del repositorio)
+*.pem
+*.key
+
 # Archivos del sistema
 Thumbs.db
 desktop.ini

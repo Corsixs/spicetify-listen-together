@@ -31,7 +31,8 @@ La app de josehtz ya tenía las salas P2P con código, la sincronización de can
 - **Sugerencias** de canciones, álbumes y playlists, con botones para reproducirlas, añadirlas a la cola o limpiar la lista.
 - **Reanudación automática** al reabrir Spotify, sin participantes duplicados.
 - **Actualización con un clic**, y aviso de *"Versión antigua de la app"* para quien no actualizó.
-- Más comprobaciones de los mensajes que llegan por la red.
+- **Seguridad reforzada** y actualizaciones firmadas: ver [Seguridad](#seguridad).
+- **Instalador** de un solo comando para Windows, macOS y Linux.
 
 ## Requisitos
 
@@ -40,9 +41,27 @@ La app de josehtz ya tenía las salas P2P con código, la sincronización de can
 
 ## Instalación
 
-Las apps de Spicetify no se instalan desde el Marketplace (su botón abre este repositorio), así que se copian a mano.
+Necesitas [Spicetify](https://spicetify.app/docs/getting-started) instalado. Las apps de Spicetify no se instalan desde el Marketplace (su botón abre este repositorio), pero el instalador lo hace en un paso.
 
-### Spotify Together Rework
+### Con el instalador
+
+**Windows:** abre PowerShell (búscalo en el menú Inicio, sin "Ejecutar como administrador") y pega:
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/Corsixs/spicetify-listen-together/main/install.ps1 | iex
+```
+
+**macOS y Linux:** en una terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Corsixs/spicetify-listen-together/main/install.sh | sh
+```
+
+El instalador descarga la última versión de este repositorio, la copia en la carpeta `CustomApps` de Spicetify, la activa y ejecuta `spicetify apply`, que reinicia Spotify. Si estabas en una sala, vuelves a entrar sola. Sirve también para actualizar o reparar la instalación, y no toca nada más. Puedes leer lo que hace en [`install.ps1`](install.ps1) e [`install.sh`](install.sh).
+
+Al terminar, en Spotify aparece **Listen Together**, con el icono de una nota musical.
+
+### A mano
 
 1. Pulsa `Win + R`, escribe `%APPDATA%\spicetify\CustomApps` y pulsa Enter.
 
@@ -66,7 +85,7 @@ Las apps de Spicetify no se instalan desde el Marketplace (su botón abre este r
 
 ### Arreglo del gato (opcional)
 
-Spotify eliminó los datos de tempo que usaba **Cat-Jam Synced**, así que el gato bailaba siempre a la misma velocidad. Este arreglo obtiene el BPM de la API pública de Deezer.
+Spotify eliminó los datos de tempo que usaba **Cat-Jam Synced**, así que el gato bailaba siempre a la misma velocidad. Este arreglo obtiene el BPM de la API pública de Deezer. Las consultas (título, artista e ISRC de la canción) pasan por el proxy CORS de Spicetify, sin datos de tu cuenta.
 
 1. Instala **Cat-Jam Synced** desde el Marketplace de Spicetify.
 2. Copia [`extensions/audiodata-fix.js`](extensions/audiodata-fix.js) en `%APPDATA%\spicetify\Extensions` (en macOS y Linux, en la subcarpeta `Extensions` de `spicetify path userdata`).
@@ -85,19 +104,42 @@ Spotify eliminó los datos de tempo que usaba **Cat-Jam Synced**, así que el ga
 **Desde Spotify (versión 7 o posterior):** cuando hay una versión nueva en este repositorio, Listen Together muestra el aviso *"Hay una versión nueva de Listen Together"*. Al pulsar **Actualizar**, descarga la versión nueva de este repositorio y recarga Spotify. Si estabas en una sala, vuelves a entrar automáticamente.
 
 - Solo descarga de este repositorio, por HTTPS, y nunca sin que pulses el botón.
+- Desde la versión 8, solo instala versiones con una firma digital válida (ver [Seguridad](#seguridad)).
 - Si la versión descargada falla al arrancar, se descarta sola y vuelve la que tenías instalada. Si falla la pantalla, aparece un botón *"Volver a la versión instalada"*.
 
-**A mano:** reemplaza la carpeta `listen-together` con la nueva versión y ejecuta `spicetify apply`. También sirve si vienes de una versión anterior a la 7, que no tiene el botón.
+**Con el instalador o a mano:** vuelve a ejecutar el instalador, o reemplaza la carpeta `listen-together` con la nueva versión y ejecuta `spicetify apply`. También sirve si vienes de una versión anterior a la 7, que no tiene el botón.
 
 Si alguien de la sala tiene una versión vieja, debajo de su nombre aparece *"Versión antigua de la app"*.
 
 ### Para quien mantiene el repositorio
 
-Al publicar una versión nueva, sube el mismo número en los cuatro sitios: `var BUILD` y `const APP_VERSION` en `engine.js`, `const UI_BUILD` en `index.js`, y `version` en [`version.json`](version.json). El botón comprueba que los archivos descargados correspondan a ese número antes de instalarlos.
+Para publicar una versión nueva:
+
+1. Sube el mismo número en los tres sitios: `var BUILD` y `const APP_VERSION` en `engine.js`, y `const UI_BUILD` en `index.js`.
+2. Firma la versión con `node tools/firmar-version.mjs "Qué cambió"`. Comprueba que los tres números coincidan y escribe [`version.json`](version.json) con los SHA-256 de `engine.js`, `index.js` y `style.css` y una firma de todo eso.
+3. Haz commit y push. El botón **Actualizar** solo instala la versión si la firma es válida y cada archivo descargado es exactamente el firmado.
+
+La clave privada está en `%USERPROFILE%\.spotify-together\clave-actualizaciones.pem`, fuera del repositorio. Guarda una copia de seguridad en un lugar privado: sin ella no se pueden publicar actualizaciones por el botón, y habría que crear otra clave y que todos reinstalaran con el instalador.
+
+## Seguridad
+
+- Todo lo que llega de otras personas (nombres, chat, sugerencias, fotos y estado de la canción) se valida y se recorta antes de guardarlo o mostrarlo. Un mensaje mal formado no puede romper la pantalla de nadie.
+- Las fotos y portadas solo se cargan de los servidores de imágenes de Spotify y de las fotos de perfil de Facebook y Google. Así nadie puede usar una imagen para ver la IP de los demás.
+- El anfitrión busca él mismo el nombre y la portada de cada sugerencia: lo que ves en la lista es lo que suena.
+- Los invitados solo siguen canciones y episodios; nunca anuncios, archivos locales ni otras direcciones.
+- Hay límites contra el spam en el chat, las sugerencias y los avisos, y un máximo de 20 personas por sala. Las conexiones que no se identifican en 15 segundos se cierran.
+- Tras 5 contraseñas incorrectas en un minuto, la sala deja de aceptar gente nueva durante un minuto.
+- Las actualizaciones del botón **Actualizar** van firmadas con una clave que no está en GitHub: aunque alguien entrara a la cuenta, no podría publicar una actualización que la app acepte.
+
+Lo que no cubre:
+
+- El código de la sala es la llave. Quien lo tenga puede entrar (o intentarlo, si hay contraseña), así que compártelo solo con gente de confianza.
+- Como la conexión es directa, el anfitrión ve la IP de cada invitado y cada invitado la del anfitrión.
+- El instalador y la instalación a mano confían en lo que haya en este repositorio en ese momento.
 
 ## Notas
 
-- La conexión entre computadoras se establece a través del servidor público gratuito de PeerJS. Después, la sincronización y el chat viajan directamente de una computadora a otra. La música no se transmite: cada persona la escucha desde su propio Spotify.
+- La conexión entre computadoras se establece a través del servidor público gratuito de PeerJS y de servidores STUN de Google. Después, la sincronización y el chat viajan directamente de una computadora a otra. La música no se transmite: cada persona la escucha desde su propio Spotify.
 - Algunas redes muy restrictivas (por ejemplo, ciertos datos móviles) pueden bloquear la conexión directa.
 - La contraseña de la sala nunca se envía ni se guarda tal cual: solo se usa un código derivado de ella.
 

@@ -6,7 +6,7 @@
 // Red de seguridad: si la descargada no arranca, se descarta y se vuelve a la instalada.
 (function () {
   if (window.__LT_OVERRIDE_RUNNING) return; // este código ya es la versión descargada
-  var BUILD = 7;
+  var BUILD = 8;
   var KEY = "listen-together:update";
   var BOOT = "listen-together:update-booting";
   try {
@@ -93,13 +93,147 @@ function genCode() {
 
 let cachedProfile = null;
 
-// Datos que llegan de otros peers: solo se aceptan URLs https y usuarios con caracteres seguros
+// ---------- Datos que llegan de otros peers ----------
+// Nada de lo que llega por la red se guarda ni se muestra sin pasar por estas funciones
+
+// Diccionario sin prototipo: un peer con ID "constructor" o "toString" no choca con nada
+function dict() {
+  return Object.create(null);
+}
+
+// Caracteres de control e invisibles, y los que invierten la dirección del texto (suplantación visual)
+const UNSAFE_CHARS = /[\u0000-\u001f\u007f-\u009f​‎‏‪-‮⁠-⁤⁦-⁩﻿]/g;
+
+function cleanText(v, max) {
+  return typeof v === "string" ? v.replace(UNSAFE_CHARS, "").trim().slice(0, max) : "";
+}
+
+function cleanName(v) {
+  return cleanText(v, 40);
+}
+
+function cleanNumber(v, min, max) {
+  return typeof v === "number" && isFinite(v) ? Math.min(max, Math.max(min, v)) : null;
+}
+
+// Solo imágenes de los servidores de Spotify y de las fotos de perfil de Facebook o Google.
+// Una URL cualquiera dejaría que quien la pone vea la IP de todos los que cargan la imagen.
+const IMAGE_HOSTS = /(^|\.)(scdn\.co|spotifycdn\.com|fbsbx\.com|fbcdn\.net|googleusercontent\.com)$/i;
+
 function safeAvatar(url) {
-  return typeof url === "string" && /^https:\/\//i.test(url) ? url : null;
+  if (typeof url !== "string" || url.length > 600) return null;
+  const img = url.match(/^spotify:image:([a-f0-9]{40})$/i);
+  if (img) return "https://i.scdn.co/image/" + img[1].toLowerCase();
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:" || u.port || u.username || u.password || !IMAGE_HOSTS.test(u.hostname)) return null;
+    return u.href;
+  } catch (e) {
+    return null;
+  }
 }
 
 function safeUser(u) {
   return typeof u === "string" && /^[A-Za-z0-9._-]{1,64}$/.test(u) ? u : null;
+}
+
+// IDs de PeerJS: el de la sala ("l2g-CODIGO") o uno aleatorio
+function cleanPeerId(v) {
+  return typeof v === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(v) ? v : null;
+}
+
+// Los mensajes del protocolo son siempre texto JSON con un campo "t"
+function parseMsg(raw, maxLen) {
+  if (typeof raw !== "string" || raw.length > maxLen) return null;
+  let m;
+  try { m = JSON.parse(raw); } catch (e) { return null; }
+  return m && typeof m === "object" && !Array.isArray(m) && typeof m.t === "string" ? m : null;
+}
+
+// Límite de mensajes por peer (cubo de fichas): ráfaga máxima y fichas que se recuperan por segundo
+function allowRate(store, key, burst, perSec) {
+  const now = Date.now();
+  let b = store[key];
+  if (!b) b = store[key] = { tokens: burst, at: now };
+  b.tokens = Math.min(burst, b.tokens + (now - b.at) / 1000 * perSec);
+  b.at = now;
+  if (b.tokens < 1) return false;
+  b.tokens -= 1;
+  return true;
+}
+
+const MAX_PARTICIPANTS = 20;
+
+function cleanParticipant(p) {
+  if (!p || typeof p !== "object") return null;
+  const id = cleanPeerId(p.id);
+  if (!id) return null;
+  return {
+    id: id,
+    name: cleanName(p.name) || "Invitado",
+    avatar: safeAvatar(p.avatar),
+    user: safeUser(p.user),
+    ver: cleanNumber(p.ver, 0, 1000) || 0,
+    isHost: p.isHost === true
+  };
+}
+
+function cleanParticipants(list) {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  const out = [];
+  for (let i = 0; i < list.length && out.length < MAX_PARTICIPANTS; i++) {
+    const p = cleanParticipant(list[i]);
+    if (p && !seen.has(p.id)) {
+      seen.add(p.id);
+      out.push(p);
+    }
+  }
+  return out;
+}
+
+function cleanChat(m) {
+  if (!m || typeof m !== "object") return null;
+  const ts = cleanNumber(m.ts, 0, 1e15) || Date.now();
+  if (m.sys === true) {
+    const sysText = cleanText(m.text, 300);
+    return sysText ? { t: "chat", sys: true, text: sysText, ts: ts } : null;
+  }
+  const text = cleanText(m.text, 500);
+  return text ? { t: "chat", from: cleanName(m.from) || "Alguien", text: text, ts: ts } : null;
+}
+
+function cleanChatLog(list, max) {
+  return Array.isArray(list) ? list.map(cleanChat).filter(Boolean).slice(-max) : [];
+}
+
+// Solo se siguen canciones y episodios: ni anuncios, ni archivos locales, ni otras URIs
+function cleanPlayableUri(u) {
+  return typeof u === "string" && /^spotify:(track|episode):[A-Za-z0-9]{22}$/.test(u) ? u : null;
+}
+
+const MAX_DURATION_MS = 24 * 60 * 60 * 1000;
+
+function cleanMeta(meta) {
+  if (!meta || typeof meta !== "object") return null;
+  return {
+    uri: cleanPlayableUri(meta.uri),
+    name: cleanText(meta.name, 200),
+    artists: cleanText(meta.artists, 300),
+    album: cleanText(meta.album, 200),
+    art: safeAvatar(meta.art),
+    duration: cleanNumber(meta.duration, 0, MAX_DURATION_MS) || 0
+  };
+}
+
+function cleanState(st) {
+  if (!st || typeof st !== "object") return null;
+  return {
+    meta: cleanMeta(st.meta),
+    pos: cleanNumber(st.pos, 0, MAX_DURATION_MS),
+    playing: st.playing === true,
+    ts: cleanNumber(st.ts, 0, 1e15) || 0
+  };
 }
 
 function firstImage(list) {
@@ -138,7 +272,7 @@ function getSpotifyProfile() {
       if (!prof.user) prof.user = safeUser(Spicetify.Platform && Spicetify.Platform.username);
       if (!prof.name) prof.name = prof.user;
       if (prof.name) {
-        prof.name = String(prof.name).trim();
+        prof.name = cleanName(String(prof.name)) || prof.user;
         cachedProfile = prof;
       }
       return prof;
@@ -159,22 +293,42 @@ function parseSpotifyRef(text) {
   return { type: type, id: m[2], uri: "spotify:" + type + ":" + m[2] };
 }
 
-function clip(v, n) {
-  return typeof v === "string" ? v.slice(0, n) : "";
-}
-
 // Todo lo que llega por la red se normaliza antes de guardarlo o mostrarlo
 function cleanSuggestion(it) {
-  if (!it) return null;
+  if (!it || typeof it !== "object") return null;
   const ref = parseSpotifyRef(it.uri);
   if (!ref) return null;
   return {
     uri: ref.uri,
     type: ref.type,
-    name: clip(it.name, 140) || SUGGEST_TYPES[ref.type],
-    sub: clip(it.sub, 140),
+    name: cleanText(it.name, 140) || SUGGEST_TYPES[ref.type],
+    sub: cleanText(it.sub, 140),
     art: safeAvatar(it.art)
   };
+}
+
+// Sugerencia completa, tal como la reparte el anfitrión (con su ID y quién la propuso)
+function cleanSuggestionEntry(it) {
+  const base = cleanSuggestion(it);
+  if (!base || typeof it.id !== "string" || !/^[A-Z0-9]{4,16}$/.test(it.id)) return null;
+  base.id = it.id;
+  base.byId = cleanPeerId(it.byId);
+  base.by = cleanName(it.by) || "Alguien";
+  return base;
+}
+
+function cleanSuggestionList(list) {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  const out = [];
+  for (let i = 0; i < list.length && out.length < SUGGEST_MAX; i++) {
+    const it = cleanSuggestionEntry(list[i]);
+    if (it && !seen.has(it.id)) {
+      seen.add(it.id);
+      out.push(it);
+    }
+  }
+  return out;
 }
 
 function race(promise, ms) {
@@ -357,7 +511,16 @@ function fmt(ms) {
 // Desfase tolerado antes de corregir la posición del invitado
 const DRIFT_MS = 1000;
 // Se envía en el "hello" para detectar invitados con una versión vieja de la app
-const APP_VERSION = 7;
+const APP_VERSION = 8;
+
+// Límites contra abusos de quien tenga el código de la sala
+const MAX_PENDING = 10;            // conexiones que aún no se identificaron
+const HELLO_TIMEOUT_MS = 15000;    // tiempo para identificarse antes de cerrar la conexión
+const MAX_MSG_FROM_GUEST = 16 * 1024;
+const MAX_MSG_FROM_HOST = 256 * 1024;
+const PW_FAIL_MAX = 5;             // contraseñas fallidas por minuto (entre todos) antes de bloquear
+const PW_LOCK_MS = 60 * 1000;
+const SUGGEST_INFLIGHT_MAX = 5;    // sugerencias de un invitado que el anfitrión busca a la vez
 
 // La sala se guarda para retomarla al reabrir Spotify
 const SESSION_KEY = "listen-together:session";
@@ -393,6 +556,54 @@ const UPDATE_FILES = { engine: "listen-together/engine.js", ui: "listen-together
 const UPDATE_MAX_BYTES = 1024 * 1024;
 const UPDATE_CHECK_MS = 6 * 60 * 60 * 1000;
 
+// Clave pública con la que se firman las actualizaciones (tools/firmar-version.mjs). La privada no
+// está en el repositorio: aunque alguien entrara a la cuenta de GitHub, sin ella no podría publicar
+// una actualización que el botón acepte.
+const UPDATE_PUBLIC_KEY = {
+  kty: "EC",
+  crv: "P-256",
+  x: "sPIUw7d4cPQ-EOBIknzx5w7IFpRLCxykWcNyiVG7erU",
+  y: "rPC11p5K8Ce0y1aCbiDLhYUQZjlZd-r1V1iv3Xxw-Uk"
+};
+
+function sha256Hex(text) {
+  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)).then(function (buf) {
+    return Array.from(new Uint8Array(buf)).map(function (b) { return (b < 16 ? "0" : "") + b.toString(16); }).join("");
+  });
+}
+
+function base64ToBytes(s) {
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+// Texto exacto que firma tools/firmar-version.mjs
+function updatePayload(v) {
+  return "listen-together-update\nversion:" + v.version + "\nnotes:" + encodeURIComponent(v.notes) +
+    "\nengine:" + v.files.engine + "\nui:" + v.files.ui + "\ncss:" + v.files.css + "\n";
+}
+
+// true solo si version.json trae los SHA-256 de los archivos y una firma válida de todo
+function verifyUpdate(v) {
+  const hex = /^[0-9a-f]{64}$/;
+  const f = v && v.files;
+  if (!f || typeof f !== "object" || !hex.test(f.engine) || !hex.test(f.ui) || !hex.test(f.css) ||
+      typeof v.notes !== "string" || typeof v.sig !== "string" || v.sig.length > 200) {
+    return Promise.resolve(false);
+  }
+  return Promise.resolve()
+    .then(function () {
+      return crypto.subtle.importKey("jwk", UPDATE_PUBLIC_KEY, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+    })
+    .then(function (key) {
+      return crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, base64ToBytes(v.sig),
+        new TextEncoder().encode(updatePayload(v)));
+    })
+    .catch(function () { return false; });
+}
+
 const ICE = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
@@ -409,7 +620,7 @@ const Engine = {
   localAvatar: null,
   localUser: null,
   pwHash: null,
-  connections: {},
+  connections: dict(),
   hostConn: null,
   participants: [],
   chatLog: [],
@@ -419,8 +630,15 @@ const Engine = {
   pending: null,
   rtt: 0,
   localControlUntil: 0,
-  lastSeen: {},
-  peerCid: {},
+  lastSeen: dict(),
+  peerCid: dict(),
+  rate: dict(),
+  unauth: new Set(),
+  pwFails: [],
+  pwLockUntil: 0,
+  suggestInflight: dict(),
+  redirects: 0,
+  redirectAt: 0,
   creator: false,
   updateAvailable: null,
   updating: false,
@@ -431,7 +649,7 @@ const Engine = {
   localControlWant: null,
   controlActor: null,
   lastAnnounced: null,
-  controlRate: {},
+  controlRate: dict(),
   lastRemoteMeta: null,
   heartbeat: null,
   listeners: {},
@@ -572,8 +790,14 @@ const Engine = {
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (v) {
         if (!v || typeof v.version !== "number" || !(v.version > APP_VERSION)) return;
-        self.updateAvailable = { version: v.version, notes: clip(v.notes, 200) };
-        self.emit("update");
+        return verifyUpdate(v).then(function (ok) {
+          if (!ok) {
+            console.warn("[Listen Together] version.json no tiene una firma válida; se ignora la versión " + v.version);
+            return;
+          }
+          self.updateAvailable = { version: v.version, notes: cleanText(v.notes, 200), files: v.files };
+          self.emit("update");
+        });
       })
       .catch(function () {});
   },
@@ -597,6 +821,15 @@ const Engine = {
         });
     }
     return Promise.all([get(UPDATE_FILES.engine), get(UPDATE_FILES.ui), get(UPDATE_FILES.css)])
+      .then(function (f) {
+        // Cada archivo tiene que ser exactamente el que se firmó
+        return Promise.all(f.map(sha256Hex)).then(function (h) {
+          if (!up.files || h[0] !== up.files.engine || h[1] !== up.files.ui || h[2] !== up.files.css) {
+            throw new Error("los archivos no coinciden con la versión firmada " + up.version);
+          }
+          return f;
+        });
+      })
       .then(function (f) {
         // Archivos completos y de la versión anunciada (evita instalar algo a medio subir)
         if (f[0].indexOf("const APP_VERSION = " + up.version + ";") < 0 || f[0].indexOf("window.ListenTogether = {") < 0) {
@@ -691,14 +924,50 @@ const Engine = {
     this.emit("suggestions");
   },
 
+  // ¿Se puede añadir? Devuelve el motivo si no (cuenta también las que aún se están buscando)
+  checkSuggestion: function (uri, byId) {
+    if (this.suggestions.some(function (s) { return s.uri === uri; })) return "Eso ya está en las sugerencias";
+    if (this.suggestions.length >= SUGGEST_MAX) return "La lista de sugerencias está llena";
+    const mine = this.suggestions.filter(function (s) { return s.byId === byId; }).length + (this.suggestInflight[byId] || 0);
+    if (mine >= SUGGEST_PER_PEER) return "Has alcanzado el máximo de sugerencias";
+    return null;
+  },
+
+  // Sugerencia de un invitado: el anfitrión busca él mismo el nombre y la portada en Spotify.
+  // Así lo que se ve en la lista es siempre lo que suena al reproducirla.
+  hostSuggestFromGuest: function (conn, member, raw) {
+    const self = this;
+    const pid = conn.peer;
+    const ref = parseSpotifyRef(raw && typeof raw === "object" ? raw.uri : null);
+    if (!ref) {
+      this.send(conn, { t: "info", msg: "Enlace no válido" });
+      return;
+    }
+    if ((this.suggestInflight[pid] || 0) >= SUGGEST_INFLIGHT_MAX) {
+      this.send(conn, { t: "info", msg: "Espera un momento antes de sugerir más" });
+      return;
+    }
+    const pre = this.checkSuggestion(ref.uri, pid);
+    if (pre) {
+      this.send(conn, { t: "info", msg: pre });
+      return;
+    }
+    this.suggestInflight[pid] = (this.suggestInflight[pid] || 0) + 1;
+    fetchItemMeta(ref.uri).then(function (meta) {
+      self.suggestInflight[pid] = Math.max(0, (self.suggestInflight[pid] || 1) - 1);
+      // Mientras se buscaba pudo irse el invitado o cambiar el anfitrión
+      if (!self.isHost || self.connections[pid] !== conn) return;
+      const err = self.hostAddSuggestion(meta, pid, member.name);
+      self.send(conn, { t: "info", msg: err || "Sugerencia enviada" });
+    });
+  },
+
   // Solo el anfitrión modifica la lista; devuelve un mensaje si se rechaza
   hostAddSuggestion: function (raw, byId, byName) {
     const it = cleanSuggestion(raw);
     if (!it) return "Enlace no válido";
-    if (this.suggestions.some(function (s) { return s.uri === it.uri; })) return "Eso ya está en las sugerencias";
-    if (this.suggestions.length >= SUGGEST_MAX) return "La lista de sugerencias está llena";
-    const mine = this.suggestions.filter(function (s) { return s.byId === byId; }).length;
-    if (mine >= SUGGEST_PER_PEER) return "Has alcanzado el máximo de sugerencias";
+    const err = this.checkSuggestion(it.uri, byId);
+    if (err) return err;
     it.id = genCode();
     it.byId = byId;
     it.by = byName || "Alguien";
@@ -770,9 +1039,15 @@ const Engine = {
     try { if (this.peer) this.peer.destroy(); } catch (e) {}
     this.peer = null;
     this.hostConn = null;
-    this.connections = {};
-    this.lastSeen = {};
-    this.peerCid = {};
+    this.connections = dict();
+    this.lastSeen = dict();
+    this.peerCid = dict();
+    this.rate = dict();
+    this.unauth = new Set();
+    this.suggestInflight = dict();
+    this.pwFails = [];
+    this.pwLockUntil = 0;
+    this.redirects = 0;
     this.chatLog = [];
     this.suggestions = [];
   },
@@ -837,8 +1112,8 @@ const Engine = {
     const self = this;
     this.resetPeer();
     this.code = opts.code || genCode();
-    this.roomName = opts.roomName || "Sala";
-    this.localName = opts.displayName || "Anfitrión";
+    this.roomName = cleanText(opts.roomName, 60) || "Sala";
+    this.localName = cleanName(opts.displayName) || "Anfitrión";
     this.localAvatar = opts.avatar || null;
     this.localUser = opts.user || null;
     this.pwHash = opts.pwHash !== undefined ? opts.pwHash : (opts.password ? hashStr(opts.password) : null);
@@ -846,7 +1121,7 @@ const Engine = {
     this.creator = true;
     this.ready = false;
     this.lastRemoteMeta = null;
-    this.connections = {};
+    this.connections = dict();
     this.participants = [];
 
     return new Promise(function (res, rej) {
@@ -863,8 +1138,8 @@ const Engine = {
         try { self.lastAnnounced = Spicetify.Player.isPlaying(); } catch (e) {}
         self.participants = [{ id: id, name: self.localName, avatar: self.localAvatar, user: self.localUser, ver: APP_VERSION, isHost: true }];
         if (opts.restore) {
-          self.chatLog = (opts.restore.chat || []).filter(function (m) { return m && typeof m.text === "string"; }).slice(-50);
-          self.suggestions = (opts.restore.suggestions || []).filter(function (it) { return it && it.id && cleanSuggestion(it); });
+          self.chatLog = cleanChatLog(opts.restore.chat, 50);
+          self.suggestions = cleanSuggestionList(opts.restore.suggestions);
         }
         self.ready = true;
         self.attach(peer);
@@ -882,7 +1157,8 @@ const Engine = {
     const self = this;
     this.resetPeer();
     this.code = String(opts.code || "").trim().toUpperCase();
-    this.localName = opts.displayName || "Invitado";
+    if (!/^[A-Z0-9]{4,16}$/.test(this.code)) return Promise.reject(new Error("El ID de la sala no es válido"));
+    this.localName = cleanName(opts.displayName) || "Invitado";
     this.localAvatar = opts.avatar || null;
     this.localUser = opts.user || null;
     this.pwHash = opts.pwHash !== undefined ? opts.pwHash : (opts.password ? hashStr(opts.password) : null);
@@ -940,9 +1216,11 @@ const Engine = {
       self.send(conn, { t: "hello", v: APP_VERSION, cid: getClientId(), name: self.localName, avatar: self.localAvatar, user: self.localUser, pwh: self.pwHash, code: self.code });
     });
     conn.on("data", function (raw) {
-      let m;
-      try { m = typeof raw === "string" ? JSON.parse(raw) : raw; } catch (e) { return; }
-      if (self.hostConn === conn) self.lastHostMsgAt = Date.now();
+      // Solo cuenta lo que llega por la conexión actual con el anfitrión
+      if (self.hostConn !== conn) return;
+      const m = parseMsg(raw, MAX_MSG_FROM_HOST);
+      if (!m) return;
+      self.lastHostMsgAt = Date.now();
       self.handleGuestMsg(conn, m);
     });
     conn.on("close", function () {
@@ -953,14 +1231,27 @@ const Engine = {
 
   handleIncoming: function (conn) {
     const self = this;
+    // Conexiones que aún no se identificaron: pocas a la vez, y se cierran si no saludan a tiempo
+    if (this.unauth.size >= MAX_PENDING) {
+      try { conn.close(); } catch (e) {}
+      return;
+    }
+    this.unauth.add(conn);
+    const helloTimer = setTimeout(function () {
+      if (!self.unauth.has(conn)) return;
+      self.unauth.delete(conn);
+      try { conn.close(); } catch (e) {}
+    }, HELLO_TIMEOUT_MS);
     conn.on("open", function () {
       conn.on("data", function (raw) {
-        let m;
-        try { m = typeof raw === "string" ? JSON.parse(raw) : raw; } catch (e) { return; }
+        const m = parseMsg(raw, MAX_MSG_FROM_GUEST);
+        if (!m) return;
         if (self.connections[conn.peer] === conn) self.lastSeen[conn.peer] = Date.now();
         self.handleHostMsg(conn, m);
       });
       conn.on("close", function () {
+        clearTimeout(helloTimer);
+        self.unauth.delete(conn);
         if (self.connections[conn.peer] === conn) {
           delete self.connections[conn.peer];
           self.removeParticipant(conn.peer);
@@ -969,44 +1260,74 @@ const Engine = {
     });
   },
 
+  // Rechaza a alguien. Con retry, quien estaba volviendo a la sala lo sigue intentando.
+  deny: function (conn, msg, retry) {
+    this.unauth.delete(conn);
+    this.send(conn, retry ? { t: "deny", msg: msg, retry: true } : { t: "deny", msg: msg });
+    setTimeout(function () { try { conn.close(); } catch (e) {} }, 300);
+  },
+
+  // Contraseñas: como mucho PW_FAIL_MAX fallos por minuto entre todos; después, un minuto de bloqueo
+  notePwFailure: function () {
+    const now = Date.now();
+    this.pwFails = this.pwFails.filter(function (t) { return now - t < 60000; });
+    this.pwFails.push(now);
+    if (this.pwFails.length >= PW_FAIL_MAX) {
+      this.pwLockUntil = now + PW_LOCK_MS;
+      this.pwFails = [];
+    }
+  },
+
   handleHostMsg: function (conn, m) {
     const self = this;
+    const pid = conn.peer;
     if (m.t === "hello") {
       if (!this.isHost) {
-        this.send(conn, { t: "redirect", hostId: this.hostId });
+        if (allowRate(this.rate, pid + ":hello", 3, 0.2)) this.send(conn, { t: "redirect", hostId: this.hostId });
         return;
       }
-      if (this.pwHash && this.pwHash !== m.pwh) {
-        this.send(conn, { t: "deny", msg: "Contraseña incorrecta" });
-        setTimeout(function () { try { conn.close(); } catch (e) {} }, 300);
+      // Un solo saludo por conexión
+      if (this.connections[pid] === conn) return;
+      if (Date.now() < this.pwLockUntil) {
+        this.deny(conn, "Demasiados intentos con contraseña incorrecta. Espera un minuto.", true);
+        return;
+      }
+      if (this.pwHash && this.pwHash !== (typeof m.pwh === "string" ? m.pwh : null)) {
+        this.notePwFailure();
+        this.deny(conn, "Contraseña incorrecta");
         return;
       }
       // ¿Es alguien que vuelve con otra conexión (p. ej. reabrió Spotify)? Se reemplaza su entrada vieja
       const cid = typeof m.cid === "string" && /^[A-Z0-9]{16}$/.test(m.cid) ? m.cid : null;
       const user = safeUser(m.user);
       const stale = Object.keys(this.connections).concat(this.participants.map(function (p) { return p.id; }))
-        .filter(function (pid, i, arr) {
-          if (pid === conn.peer || pid === self.peer.id || arr.indexOf(pid) !== i) return false;
-          if (cid) return self.peerCid[pid] === cid;
+        .filter(function (id, i, arr) {
+          if (id === pid || id === self.peer.id || arr.indexOf(id) !== i) return false;
+          if (cid) return self.peerCid[id] === cid;
           // Respaldo para versiones sin cid: mismo usuario de Spotify y sin cid conocido
-          const old = self.participants.find(function (p) { return p.id === pid; });
-          return !!(user && old && !self.peerCid[pid] && old.user === user);
+          const old = self.participants.find(function (p) { return p.id === id; });
+          return !!(user && old && !self.peerCid[id] && old.user === user);
         });
-      stale.forEach(function (pid) {
-        self.suggestions.forEach(function (sg) { if (sg.byId === pid) sg.byId = conn.peer; });
-        self.dropGuest(pid);
+      const known = this.participants.some(function (p) { return p.id === pid; });
+      if (!stale.length && !known && this.participants.length >= MAX_PARTICIPANTS) {
+        this.deny(conn, "La sala está llena", true);
+        return;
+      }
+      stale.forEach(function (id) {
+        self.suggestions.forEach(function (sg) { if (sg.byId === id) sg.byId = pid; });
+        self.dropGuest(id);
       });
-      this.connections[conn.peer] = conn;
-      this.lastSeen[conn.peer] = Date.now();
-      if (cid) this.peerCid[conn.peer] = cid;
-      const exists = this.participants.some(function (p) { return p.id === conn.peer; });
-      if (!exists) {
+      this.unauth.delete(conn);
+      this.connections[pid] = conn;
+      this.lastSeen[pid] = Date.now();
+      if (cid) this.peerCid[pid] = cid;
+      if (!known) {
         this.participants.push({
-          id: conn.peer,
-          name: m.name || "Invitado",
+          id: pid,
+          name: cleanName(m.name) || "Invitado",
           avatar: safeAvatar(m.avatar),
-          user: safeUser(m.user),
-          ver: typeof m.v === "number" ? m.v : 0,
+          user: user,
+          ver: cleanNumber(m.v, 0, 1000) || 0,
           isHost: false
         });
       }
@@ -1023,26 +1344,37 @@ const Engine = {
       this.broadcastParticipants();
       return;
     }
-    // A partir de aquí solo se aceptan peers que pasaron el "hello" (y la contraseña)
-    const member = this.connections[conn.peer] && this.participants.find(function (p) { return p.id === conn.peer; });
-    if (m.t === "chat" && this.isHost) {
-      if (!member || typeof m.text !== "string" || !m.text.trim()) return;
-      const msg = { t: "chat", from: member.name, text: m.text.trim().slice(0, 500), ts: Date.now() };
+    // A partir de aquí solo se aceptan peers que pasaron el "hello" (y la contraseña),
+    // por su conexión registrada y con un límite de mensajes por tipo
+    if (!this.isHost || this.connections[pid] !== conn) return;
+    const member = this.participants.find(function (p) { return p.id === pid; });
+    if (!member) return;
+    if (m.t === "ping") {
+      if (allowRate(this.rate, pid + ":ping", 3, 1)) this.send(conn, { t: "pong", c: cleanNumber(m.c, 0, 1e15) });
+      return;
+    }
+    if (m.t === "chat") {
+      if (!allowRate(this.rate, pid + ":chat", 5, 1)) return;
+      const text = cleanText(m.text, 500);
+      if (!text) return;
+      const msg = { t: "chat", from: member.name, text: text, ts: Date.now() };
       this.addChat(msg);
       this.sendAll(msg);
       return;
     }
-    if (m.t === "suggest" && this.isHost) {
-      if (!member) return;
-      const err = this.hostAddSuggestion(m.item, conn.peer, member.name);
-      this.send(conn, { t: "info", msg: err || "Sugerencia enviada" });
+    if (m.t === "suggest") {
+      if (!allowRate(this.rate, pid + ":suggest", 10, 0.5)) {
+        this.send(conn, { t: "info", msg: "Espera un momento antes de sugerir más" });
+        return;
+      }
+      this.hostSuggestFromGuest(conn, member, m.item);
       return;
     }
-    if (m.t === "control" && this.isHost) {
-      if (!member || typeof m.playing !== "boolean") return;
+    if (m.t === "control") {
+      if (typeof m.playing !== "boolean") return;
       const now = Date.now();
-      if (now - (this.controlRate[conn.peer] || 0) < 600) return;
-      this.controlRate[conn.peer] = now;
+      if (now - (this.controlRate[pid] || 0) < 600) return;
+      this.controlRate[pid] = now;
       let cur = null;
       try { cur = Spicetify.Player.isPlaying(); } catch (e) {}
       if (cur === m.playing) {
@@ -1056,35 +1388,31 @@ const Engine = {
       } catch (e) {}
       return;
     }
-    if (m.t === "unsuggest" && this.isHost) {
-      if (!member) return;
-      const own = this.suggestions.some(function (s) { return s.id === m.id && s.byId === conn.peer; });
+    if (m.t === "unsuggest") {
+      if (typeof m.id !== "string" || !allowRate(this.rate, pid + ":unsuggest", 10, 2)) return;
+      const own = this.suggestions.some(function (s) { return s.id === m.id && s.byId === pid; });
       if (own) this.removeSuggestion(m.id);
       return;
     }
-    if (m.t === "ping") {
-      this.send(conn, { t: "pong", c: m.c });
-      return;
-    }
     if (m.t === "sync-req") {
-      if (!member) return;
-      this.send(conn, { t: "state", state: playerState() });
+      if (allowRate(this.rate, pid + ":sync", 3, 1)) this.send(conn, { t: "state", state: playerState() });
       return;
     }
     if (m.t === "leave") {
-      delete this.connections[conn.peer];
-      this.removeParticipant(conn.peer);
+      delete this.connections[pid];
+      this.removeParticipant(pid);
       try { conn.close(); } catch (e) {}
     }
   },
 
   handleGuestMsg: function (conn, m) {
     if (m.t === "welcome") {
-      this.code = m.code;
-      this.roomName = m.roomName;
-      this.hostId = m.hostId;
-      this.participants = m.list || [];
-      this.suggestions = (m.suggestions || []).filter(cleanSuggestion);
+      // El código es el de la sala a la que se entró: el anfitrión no lo cambia
+      this.roomName = cleanText(m.roomName, 60) || "Sala";
+      this.hostId = cleanPeerId(m.hostId) || conn.peer;
+      this.participants = cleanParticipants(m.list);
+      this.suggestions = cleanSuggestionList(m.suggestions);
+      this.redirects = 0;
       this.ready = true;
       this.reconnecting = null;
       this.lastHostMsgAt = Date.now();
@@ -1105,6 +1433,7 @@ const Engine = {
       return;
     }
     if (m.t === "pong") {
+      if (typeof m.c !== "number") return;
       const sample = Date.now() - m.c;
       if (sample >= 0 && sample < 5000) {
         this.rtt = this.rtt ? this.rtt * 0.7 + sample * 0.3 : sample;
@@ -1112,39 +1441,52 @@ const Engine = {
       return;
     }
     if (m.t === "suggestions") {
-      this.suggestions = (m.list || []).filter(cleanSuggestion);
+      this.suggestions = cleanSuggestionList(m.list);
       this.emit("suggestions");
       return;
     }
     if (m.t === "info") {
-      if (typeof m.msg === "string") Spicetify.showNotification(m.msg.slice(0, 120));
+      const info = cleanText(m.msg, 120);
+      if (info && allowRate(this.rate, "host:info", 5, 1)) Spicetify.showNotification(info);
       return;
     }
     if (m.t === "participants") {
-      this.participants = m.list || [];
+      this.participants = cleanParticipants(m.list);
       this.emit("participants");
       return;
     }
     if (m.t === "chat") {
-      this.addChat(m);
+      const c = cleanChat(m);
+      if (c && allowRate(this.rate, "host:chat", 30, 10)) this.addChat(c);
       return;
     }
     if (m.t === "redirect") {
-      if (m.hostId && m.hostId !== conn.peer) this.connectTo(m.hostId);
+      const target = cleanPeerId(m.hostId);
+      if (!target || target === conn.peer || (this.peer && target === this.peer.id)) return;
+      // Sin quedar rebotando entre peers: como mucho 5 redirecciones seguidas cada 30 s
+      const now = Date.now();
+      if (now - this.redirectAt > 30000) this.redirects = 0;
+      this.redirectAt = now;
+      if (++this.redirects > 5) return;
+      this.connectTo(target);
       return;
     }
     if (m.t === "host-change") {
-      if (m.hostId && this.peer && m.hostId === this.peer.id) {
+      const target = cleanPeerId(m.hostId);
+      if (!target) return;
+      if (this.peer && target === this.peer.id) {
         this.becomeHost(m.list);
-      } else if (m.hostId) {
-        this.hostId = m.hostId;
-        this.connectTo(m.hostId);
+      } else {
+        this.hostId = target;
+        this.connectTo(target);
       }
       return;
     }
     if (m.t === "deny") {
-      const err = new Error(typeof m.msg === "string" ? m.msg.slice(0, 120) : "Acceso denegado");
-      err.denied = true;
+      const err = new Error(cleanText(m.msg, 120) || "Acceso denegado");
+      // Con retry (sala llena o bloqueada un momento) se sigue intentando volver a la sala
+      err.denied = m.retry !== true;
+      if (!err.denied && (this.resuming || this.reconnecting)) return;
       if (this.joinRej) {
         const r = this.joinRej;
         this.joinRej = null;
@@ -1164,10 +1506,13 @@ const Engine = {
     }
   },
 
-  applyState: function (st) {
+  applyState: function (raw) {
+    const st = cleanState(raw);
     if (!st) return;
-    this.lastRemoteMeta = st.meta || null;
+    this.lastRemoteMeta = st.meta;
     this.emit("state", st);
+    // Anuncio, archivo local u otra cosa que no se puede seguir: se deja todo como está
+    if (st.meta && !st.meta.uri) return;
     try {
       // Lo que tarda el mensaje en llegar: el anfitrión ya va un poco más adelante
       const target = typeof st.pos === "number"
@@ -1214,6 +1559,10 @@ const Engine = {
     delete this.connections[pid];
     delete this.lastSeen[pid];
     delete this.peerCid[pid];
+    delete this.controlRate[pid];
+    delete this.suggestInflight[pid];
+    const rate = this.rate;
+    Object.keys(rate).forEach(function (k) { if (k.indexOf(pid + ":") === 0) delete rate[k]; });
     if (c) {
       try { c.close(); } catch (e) {}
     }
@@ -1265,7 +1614,7 @@ const Engine = {
     Object.keys(this.connections).forEach(function (k) {
       try { self.connections[k].close(); } catch (e) {}
     });
-    this.connections = {};
+    this.connections = dict();
     this.connectTo(newHost);
   },
 
@@ -1274,12 +1623,15 @@ const Engine = {
     this.isHost = true;
     this.ready = true;
     this.hostId = this.peer.id;
-    this.connections = {};
-    const src = (list && list.length)
-      ? list
-      : [{ id: this.peer.id, name: this.localName, avatar: this.localAvatar, user: this.localUser, ver: APP_VERSION, isHost: true }];
+    this.connections = dict();
+    // La lista viene del anfitrión anterior: se valida como cualquier otro dato de la red
+    const src = cleanParticipants(list);
+    if (!src.some(function (p) { return p.id === self.peer.id; })) {
+      src.unshift({ id: this.peer.id, name: this.localName, avatar: this.localAvatar, user: this.localUser, ver: APP_VERSION, isHost: true });
+    }
     this.participants = src.map(function (p) {
-      return { id: p.id, name: p.name, avatar: p.avatar, user: p.user, ver: p.ver, isHost: p.id === self.peer.id };
+      p.isHost = p.id === self.peer.id;
+      return p;
     });
     try { this.lastAnnounced = Spicetify.Player.isPlaying(); } catch (e) {}
     this.startHeartbeat();
@@ -1322,14 +1674,15 @@ const Engine = {
     this.sendToHost({ t: "control", playing: playing });
   },
 
-  sendChat: function (text) {
-    if (!text || !text.trim()) return;
+  sendChat: function (raw) {
+    const text = cleanText(raw, 500);
+    if (!text) return;
     if (this.isHost) {
-      const full = { t: "chat", from: this.localName, text: text.trim(), ts: Date.now() };
+      const full = { t: "chat", from: this.localName, text: text, ts: Date.now() };
       this.addChat(full);
       this.sendAll(full);
     } else {
-      this.sendToHost({ t: "chat", name: this.localName, text: text.trim() });
+      this.sendToHost({ t: "chat", name: this.localName, text: text });
     }
   },
 
@@ -1347,9 +1700,12 @@ const Engine = {
     try { if (this.peer) this.peer.destroy(); } catch (e) {}
     this.peer = null;
     this.hostConn = null;
-    this.connections = {};
-    this.lastSeen = {};
-    this.peerCid = {};
+    this.connections = dict();
+    this.lastSeen = dict();
+    this.peerCid = dict();
+    this.rate = dict();
+    this.unauth = new Set();
+    this.suggestInflight = dict();
     this.ready = false;
     this.isHost = false;
     this.hostId = null;
@@ -1358,7 +1714,7 @@ const Engine = {
     this.suggestions = [];
     this.controlActor = null;
     this.lastAnnounced = null;
-    this.controlRate = {};
+    this.controlRate = dict();
     this.localControlUntil = 0;
     this.lastRemoteMeta = null;
     this.pending = null;

@@ -1,0 +1,7 @@
+# sh no acepta saltos de línea de Windows
+*.sh text eol=lf
+
+# La firma de las actualizaciones cubre los bytes exactos de estos archivos: siempre LF
+listen-together/*.js text eol=lf
+listen-together/*.css text eol=lf
+listen-together/*.json text eol=lf

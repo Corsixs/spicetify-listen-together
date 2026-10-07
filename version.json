@@ -1,4 +1,10 @@
 {
-  "version": 7,
-  "notes": "Actualización desde Spotify, botón de cola y botón para limpiar sugerencias"
+  "version": 8,
+  "notes": "Más seguridad: validación de todo lo que llega por la red, límites contra spam y contraseñas, y actualizaciones firmadas",
+  "files": {
+    "engine": "69dc08ab7b937100cba37bd09da75bfee85485be2cdd1c79d88a90a394674e97",
+    "ui": "03b298ec78a2e2c59bbdbc1d52cea8a23d69580e2ba0c86a40561cca8554ddf5",
+    "css": "7e1c94301c4055da24f5485b16bf2340f670f9090383c53bcf6ef3394ed57693"
+  },
+  "sig": "31mEyB4Q7BnUnRrwLVl1JKOH3GtjCTNJBV43PbMuWJ5CCHnBV7ShmynCulg3FuZfT4NcgOtcBZ6hrI/N5N9PJQ=="
 }

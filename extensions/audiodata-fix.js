@@ -96,7 +96,8 @@
         } catch (e) {}
       }
     }
-    if (!match || !match.id) return null;
+    // El id viene de la respuesta de Deezer: solo se usa si es un número
+    if (!match || !Number.isSafeInteger(match.id) || match.id <= 0) return null;
 
     // La búsqueda no trae bpm; el detalle de la pista sí
     const det = (match.bpm > 0) ? match

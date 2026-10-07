@@ -4,7 +4,7 @@ const react = Spicetify.React;
 const { useState, useEffect, useRef } = react;
 
 // Debe coincidir con APP_VERSION de engine.js
-const UI_BUILD = 7;
+const UI_BUILD = 8;
 const UPDATE_KEY = "listen-together:update";
 const UPDATE_BOOT_KEY = "listen-together:update-booting";
 
@@ -111,7 +111,7 @@ function Avatar(props) {
       onError: function () { setBroken(true); }
     });
   }
-  const ch = (props.name || "?").charAt(0).toUpperCase();
+  const ch = String(props.name || "?").charAt(0).toUpperCase();
   return react.createElement("div", { className: cls }, ch);
 }
 
@@ -494,7 +494,7 @@ function App() {
             react.createElement("span", { className: "lt-p-name" }, p.name),
             react.createElement("span", {
               className: "lt-p-status" + (isRoomHost ? " is-host" : outdated ? " is-old" : ""),
-              title: outdated ? "Tiene que actualizar index.js y style.css y ejecutar spicetify apply" : undefined
+              title: outdated ? "Tiene que actualizar la app con el botón Actualizar o con el instalador" : undefined
             }, isRoomHost ? "Anfitrión" : outdated ? "Versión antigua de la app" : "En la sala"))),
           isHost && !isRoomHost && !isSelf &&
             react.createElement("div", { className: "lt-p-actions" },
@@ -704,6 +704,33 @@ function App() {
   );
 }
 
+// Si algo de la pantalla falla, se avisa y se puede reintentar en lugar de que Spotify muestre
+// su error genérico. La conexión con la sala vive en engine.js y no se pierde.
+const AppBoundary = react.Component && class AppBoundary extends react.Component {
+  constructor(props) {
+    super(props);
+    this.state = { failed: false };
+  }
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(e) {
+    console.error("[Listen Together] error en la pantalla:", e);
+  }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    const self = this;
+    return react.createElement("div", { className: "lt-app" },
+      react.createElement("div", { className: "lt-hero" },
+        react.createElement("h2", null, "Algo falló al mostrar la sala"),
+        react.createElement("p", { className: "lt-sub" }, "La conexión sigue activa."),
+        react.createElement("button", {
+          className: "lt-btn lt-btn-primary",
+          onClick: function () { self.setState({ failed: false }); }
+        }, "Reintentar")));
+  }
+};
+
 // Si se abre la app antes de que engine.js termine de cargar, espera un momento
 function Loader() {
   const [ready, setReady] = useState(bindEngine);
@@ -717,7 +744,11 @@ function Loader() {
     }, 300);
     return function () { clearInterval(iv); };
   }, [ready]);
-  if (ready) return react.createElement(App);
+  if (ready) {
+    return AppBoundary
+      ? react.createElement(AppBoundary, null, react.createElement(App))
+      : react.createElement(App);
+  }
   return react.createElement("div", { className: "lt-app" },
     react.createElement("div", { className: "lt-hero" },
       react.createElement("p", { className: "lt-sub" }, "Cargando Listen Together…")));
