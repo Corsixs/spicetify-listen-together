@@ -1,7 +1,7 @@
 {
   "name": "Spotify Together Rework",
   "description": "Escucha música con tus amigos en tiempo real: salas P2P con chat, sugerencias y perfiles de Spotify. Rework de Listen Together, de josehtz.",
-  "preview": "assets/preview.png",
+  "preview": "assets/thumbnail.jpg",
   "readme": "README.md",
   "authors": [
     { "name": "Corsixs", "url": "https://github.com/Corsixs" }
