@@ -6,7 +6,7 @@
 // Red de seguridad: si la descargada no arranca, se descarta y se vuelve a la instalada.
 (function () {
   if (window.__LT_OVERRIDE_RUNNING) return; // este código ya es la versión descargada
-  var BUILD = 8;
+  var BUILD = 9;
   var KEY = "listen-together:update";
   var BOOT = "listen-together:update-booting";
   try {
@@ -72,6 +72,276 @@ if (window.__LT_BUILTIN_SKIPPED && !ltMain.force) {
   return;
 }
 if (window.__LT_OVERRIDE_RUNNING) window.__LT_OVERRIDE_STARTED = true;
+
+// ---------- Idioma ----------
+// La app sigue el idioma de Spotify: español si es "es…" e inglés para todo lo demás
+const STRINGS = {
+  es: {
+    // Engine
+    default_host: "Anfitrión",
+    default_guest: "Invitado",
+    someone: "Alguien",
+    room: "Sala",
+    type_track: "Canción",
+    type_album: "Álbum",
+    type_playlist: "Playlist",
+    err_no_room: "No existe ninguna sala con ese ID",
+    err_signal: "Sin conexión con el servicio de señalización",
+    err_id_taken: "ID de sala en uso, intenta crearla otra vez",
+    err_p2p: "Error de conexión P2P",
+    err_timeout: "Tiempo agotado. Comprueba que la sala exista y esté abierta.",
+    err_bad_id: "El ID de la sala no es válido",
+    err_no_peerjs: "PeerJS no disponible",
+    err_resume: "No se pudo volver a la sala {code}",
+    no_update: "No hay ninguna actualización disponible",
+    update_failed: "No se pudo actualizar. Inténtalo más tarde.",
+    not_in_room: "No estás en una sala",
+    host_no_suggest: "El anfitrión no sugiere: pon la música directamente",
+    only_suggestable: "Solo se pueden sugerir canciones, álbumes o playlists",
+    only_host_queue: "Solo el anfitrión maneja la cola",
+    suggestion_gone: "Esa sugerencia ya no existe",
+    queue_failed: "No se pudo añadir a la cola",
+    menu_suggest: "Sugerir en Listen Together",
+    denied: "Acceso denegado",
+    info_sent: "Sugerencia enviada",
+    info_invalid: "Enlace no válido",
+    info_dup: "Eso ya está en las sugerencias",
+    info_full: "La lista de sugerencias está llena",
+    info_max: "Has alcanzado el máximo de sugerencias",
+    info_wait: "Espera un momento antes de sugerir más",
+    deny_password: "Contraseña incorrecta",
+    deny_locked: "Demasiados intentos con contraseña incorrecta. Espera un minuto.",
+    deny_full: "La sala está llena",
+    sys_played: "▶ {actor} puso {name} (sugerida por {by})",
+    sys_queued: "➕ {actor} añadió {name} a la cola",
+    sys_queued_many: "➕ {actor} añadió {name} ({count} canciones) a la cola",
+    sys_paused: "⏸ {actor} pausó la canción",
+    sys_resumed: "▶ {actor} reanudó la canción",
+    topbar_idle: "Listen Together",
+    topbar_room_one: "Listen Together · En una sala",
+    topbar_room_many: "Listen Together · En una sala con {n} personas",
+    topbar_wait: "Listen Together · Reconectando…",
+    // Interfaz
+    waiting_host: "El anfitrión se desconectó. Esperando a que vuelva…",
+    host_gone: "El anfitrión no volvió. La sala se ha cerrado.",
+    kicked: "Has sido expulsado de la sala.",
+    room_of: "Sala de {name}",
+    create_failed: "No se pudo crear la sala",
+    enter_code: "Introduce el ID de la sala",
+    join_failed: "No se pudo unir a la sala",
+    invite: "Únete a mi sala de Listen Together. Abre la app en Spotify y usa el ID: {code}",
+    paste_link: "Pega un enlace de una canción, álbum o playlist de Spotify",
+    downloading: "Descargando la versión {v}…",
+    update_available: "Hay una versión nueva de Listen Together",
+    update_btn: "Actualizar",
+    lobby_sub: "Crea una sala y escucha la misma canción con tus amigos en tiempo real.",
+    returning: "Volviendo a la sala",
+    reopening: "Reabriendo tu sala {code}…",
+    connecting_to: "Conectando con la sala {code}…",
+    cancel: "Cancelar",
+    back: "Volver",
+    create_room: "Crear sala",
+    join_room: "Unirse a sala",
+    room_id: "ID de la sala",
+    room_id_ph: "Ej: AB12CD34",
+    password: "Contraseña",
+    optional: " (opcional)",
+    pw_ph_create: "Déjala vacía si es pública",
+    pw_ph_join: "Si la sala la tiene",
+    connecting: "Conectando…",
+    join: "Unirse",
+    join_with_id: "Unirse con ID",
+    view_profile: "Ver perfil de {name}",
+    outdated_hint: "Tiene que actualizar la app con el botón Actualizar o con el instalador",
+    host: "Anfitrión",
+    outdated: "Versión antigua de la app",
+    in_room: "En la sala",
+    kick: "Expulsar",
+    make_host: "Hacer anfitrión",
+    confirm_transfer: "¿Transferir el control de la sala a {name}?",
+    nobody_else: "Aún no hay nadie más en la sala",
+    nothing_playing: "Nada reproduciéndose",
+    play_something: "Pon una canción y todos la seguirán",
+    waiting_for_host: "Esperando al anfitrión",
+    pause_all: "Pausar para todos",
+    resume_all: "Reanudar para todos",
+    you_control: "Tú controlas la sala",
+    guest_hint: "Puedes pausar o reanudar · el anfitrión elige la música",
+    play_now: "Reproducir ahora para todos",
+    add_queue: "Añadir a la cola",
+    add_queue_all: "Añadir sus canciones a la cola",
+    added_queue: "Añadido a la cola",
+    remove: "Quitar",
+    suggested_by: "Sugerido por {name}",
+    suggest_empty: "Sugiere algo para que el anfitrión lo ponga",
+    suggestions: "Sugerencias",
+    clear_all_title: "Borrar todas las sugerencias",
+    clear_one: "¿Borrar la sugerencia?",
+    clear_many: "¿Borrar las {n} sugerencias?",
+    clear: "Limpiar",
+    suggest_ph: "Pega un enlace de canción, álbum o playlist…",
+    suggest_btn: "Sugerir",
+    suggest_hint: "También puedes arrastrarlo aquí o usar clic derecho → Sugerir en Listen Together",
+    chat: "Chat",
+    no_messages: "Aún no hay mensajes",
+    message_ph: "Escribe un mensaje…",
+    send: "Enviar",
+    live: "EN DIRECTO",
+    copy_invite: "Copiar invitación",
+    copied: "Copiado",
+    copy: "Copiar",
+    leave: "Salir",
+    ui_failed: "Algo falló al mostrar la sala",
+    still_connected: "La conexión sigue activa.",
+    retry: "Reintentar"
+  },
+  en: {
+    default_host: "Host",
+    default_guest: "Guest",
+    someone: "Someone",
+    room: "Room",
+    type_track: "Song",
+    type_album: "Album",
+    type_playlist: "Playlist",
+    err_no_room: "There's no room with that ID",
+    err_signal: "Can't reach the signaling service",
+    err_id_taken: "That room ID is in use, try creating it again",
+    err_p2p: "P2P connection error",
+    err_timeout: "Timed out. Check that the room exists and is open.",
+    err_bad_id: "That room ID isn't valid",
+    err_no_peerjs: "PeerJS isn't available",
+    err_resume: "Couldn't get back into room {code}",
+    no_update: "There's no update available",
+    update_failed: "Couldn't update. Try again later.",
+    not_in_room: "You're not in a room",
+    host_no_suggest: "The host doesn't suggest: just play the music",
+    only_suggestable: "Only songs, albums or playlists can be suggested",
+    only_host_queue: "Only the host manages the queue",
+    suggestion_gone: "That suggestion no longer exists",
+    queue_failed: "Couldn't add it to the queue",
+    menu_suggest: "Suggest in Listen Together",
+    denied: "Access denied",
+    info_sent: "Suggestion sent",
+    info_invalid: "Invalid link",
+    info_dup: "That's already in the suggestions",
+    info_full: "The suggestion list is full",
+    info_max: "You've reached the suggestion limit",
+    info_wait: "Wait a moment before suggesting more",
+    deny_password: "Wrong password",
+    deny_locked: "Too many wrong password attempts. Wait a minute.",
+    deny_full: "The room is full",
+    sys_played: "▶ {actor} played {name} (suggested by {by})",
+    sys_queued: "➕ {actor} added {name} to the queue",
+    sys_queued_many: "➕ {actor} added {name} ({count} songs) to the queue",
+    sys_paused: "⏸ {actor} paused the song",
+    sys_resumed: "▶ {actor} resumed the song",
+    topbar_idle: "Listen Together",
+    topbar_room_one: "Listen Together · In a room",
+    topbar_room_many: "Listen Together · In a room with {n} people",
+    topbar_wait: "Listen Together · Reconnecting…",
+    waiting_host: "The host disconnected. Waiting for them to come back…",
+    host_gone: "The host didn't come back. The room has closed.",
+    kicked: "You were removed from the room.",
+    room_of: "{name}'s room",
+    create_failed: "Couldn't create the room",
+    enter_code: "Enter the room ID",
+    join_failed: "Couldn't join the room",
+    invite: "Join my Listen Together room. Open the app in Spotify and use the ID: {code}",
+    paste_link: "Paste a Spotify link to a song, album or playlist",
+    downloading: "Downloading version {v}…",
+    update_available: "A new version of Listen Together is available",
+    update_btn: "Update",
+    lobby_sub: "Create a room and listen to the same song with your friends in real time.",
+    returning: "Returning to the room",
+    reopening: "Reopening your room {code}…",
+    connecting_to: "Connecting to room {code}…",
+    cancel: "Cancel",
+    back: "Back",
+    create_room: "Create room",
+    join_room: "Join a room",
+    room_id: "Room ID",
+    room_id_ph: "e.g. AB12CD34",
+    password: "Password",
+    optional: " (optional)",
+    pw_ph_create: "Leave it empty for a public room",
+    pw_ph_join: "If the room has one",
+    connecting: "Connecting…",
+    join: "Join",
+    join_with_id: "Join with ID",
+    view_profile: "View {name}'s profile",
+    outdated_hint: "They need to update the app with the Update button or the installer",
+    host: "Host",
+    outdated: "Old version of the app",
+    in_room: "In the room",
+    kick: "Remove from room",
+    make_host: "Make host",
+    confirm_transfer: "Give control of the room to {name}?",
+    nobody_else: "Nobody else is in the room yet",
+    nothing_playing: "Nothing playing",
+    play_something: "Play a song and everyone will follow",
+    waiting_for_host: "Waiting for the host",
+    pause_all: "Pause for everyone",
+    resume_all: "Resume for everyone",
+    you_control: "You're in control of the room",
+    guest_hint: "You can pause or resume · the host picks the music",
+    play_now: "Play now for everyone",
+    add_queue: "Add to queue",
+    add_queue_all: "Add its songs to the queue",
+    added_queue: "Added to queue",
+    remove: "Remove",
+    suggested_by: "Suggested by {name}",
+    suggest_empty: "Suggest something for the host to play",
+    suggestions: "Suggestions",
+    clear_all_title: "Clear all suggestions",
+    clear_one: "Clear the suggestion?",
+    clear_many: "Clear all {n} suggestions?",
+    clear: "Clear",
+    suggest_ph: "Paste a song, album or playlist link…",
+    suggest_btn: "Suggest",
+    suggest_hint: "You can also drag it here or right-click → Suggest in Listen Together",
+    chat: "Chat",
+    no_messages: "No messages yet",
+    message_ph: "Write a message…",
+    send: "Send",
+    live: "LIVE",
+    copy_invite: "Copy invite",
+    copied: "Copied",
+    copy: "Copy",
+    leave: "Leave",
+    ui_failed: "Something went wrong showing the room",
+    still_connected: "You're still connected.",
+    retry: "Try again"
+  }
+};
+
+let currentLang = null;
+
+function getLang() {
+  if (currentLang) return currentLang;
+  let loc = null;
+  try { loc = Spicetify.Locale && Spicetify.Locale.getLocale && Spicetify.Locale.getLocale(); } catch (e) {}
+  // Mientras Spicetify.Locale no está listo se usa el idioma del navegador, sin guardarlo
+  const sure = typeof loc === "string" && !!loc;
+  if (!sure) {
+    try { loc = (document.documentElement && document.documentElement.lang) || navigator.language; } catch (e) { loc = ""; }
+  }
+  const lang = /^es\b/i.test(String(loc || "")) ? "es" : "en";
+  if (sure) currentLang = lang;
+  return lang;
+}
+
+// Texto en un idioma concreto; {clave} se reemplaza por vars.clave
+function tr(lang, key, vars) {
+  const s = (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.es[key] || key;
+  if (!vars) return s;
+  return s.replace(/\{(\w+)\}/g, function (m, k) {
+    return vars[k] !== undefined && vars[k] !== null ? String(vars[k]) : m;
+  });
+}
+
+function t(key, vars) {
+  return tr(getLang(), key, vars);
+}
 
 function hashStr(s) {
   let h = 0;
@@ -170,7 +440,7 @@ function cleanParticipant(p) {
   if (!id) return null;
   return {
     id: id,
-    name: cleanName(p.name) || "Invitado",
+    name: cleanName(p.name) || t("default_guest"),
     avatar: safeAvatar(p.avatar),
     user: safeUser(p.user),
     ver: cleanNumber(p.ver, 0, 1000) || 0,
@@ -192,10 +462,30 @@ function cleanParticipants(list) {
   return out;
 }
 
+// Avisos que viajan con código para que cada uno los vea en su idioma (junto al texto en español,
+// que es lo que muestran las versiones anteriores)
+const INFO_CODES = new Set(["sent", "invalid", "dup", "full", "max", "wait"]);
+const DENY_CODES = new Set(["password", "locked", "full"]);
+const SYS_CODES = new Set(["played", "queued", "queued_many", "paused", "resumed"]);
+
+function cleanSysArgs(a) {
+  const args = a && typeof a === "object" ? a : {};
+  return {
+    actor: cleanName(args.actor) || t("someone"),
+    name: cleanText(args.name, 140) || t("type_track"),
+    by: cleanName(args.by) || t("someone"),
+    count: Math.floor(cleanNumber(args.count, 0, 10000) || 0)
+  };
+}
+
 function cleanChat(m) {
   if (!m || typeof m !== "object") return null;
   const ts = cleanNumber(m.ts, 0, 1e15) || Date.now();
   if (m.sys === true) {
+    if (typeof m.code === "string" && SYS_CODES.has(m.code)) {
+      const args = cleanSysArgs(m.args);
+      return { t: "chat", sys: true, text: t("sys_" + m.code, args), code: m.code, args: args, ts: ts };
+    }
     const sysText = cleanText(m.text, 300);
     return sysText ? { t: "chat", sys: true, text: sysText, ts: ts } : null;
   }
@@ -279,7 +569,6 @@ function getSpotifyProfile() {
     });
 }
 
-const SUGGEST_TYPES = { track: "Canción", album: "Álbum", playlist: "Playlist" };
 const SUGGEST_MAX = 50;
 const SUGGEST_PER_PEER = 15;
 
@@ -301,7 +590,7 @@ function cleanSuggestion(it) {
   return {
     uri: ref.uri,
     type: ref.type,
-    name: cleanText(it.name, 140) || SUGGEST_TYPES[ref.type],
+    name: cleanText(it.name, 140) || t("type_" + ref.type),
     sub: cleanText(it.sub, 140),
     art: safeAvatar(it.art)
   };
@@ -313,7 +602,7 @@ function cleanSuggestionEntry(it) {
   if (!base || typeof it.id !== "string" || !/^[A-Z0-9]{4,16}$/.test(it.id)) return null;
   base.id = it.id;
   base.byId = cleanPeerId(it.byId);
-  base.by = cleanName(it.by) || "Alguien";
+  base.by = cleanName(it.by) || t("someone");
   return base;
 }
 
@@ -511,7 +800,7 @@ function fmt(ms) {
 // Desfase tolerado antes de corregir la posición del invitado
 const DRIFT_MS = 1000;
 // Se envía en el "hello" para detectar invitados con una versión vieja de la app
-const APP_VERSION = 8;
+const APP_VERSION = 9;
 
 // Límites contra abusos de quien tenga el código de la sala
 const MAX_PENDING = 10;            // conexiones que aún no se identificaron
@@ -667,6 +956,7 @@ const Engine = {
     if (evt === "participants" || evt === "suggestions" || evt === "chat" || evt === "joined" || evt === "role") {
       this.schedulePersist();
     }
+    updateTopbar();
   },
 
   // ---------- Sesión guardada ----------
@@ -730,7 +1020,7 @@ const Engine = {
           self.resetPeer();
           self.clearSession();
           self.emit("resume");
-          self.emit("error", "No se pudo volver a la sala " + s.code);
+          self.emit("error", t("err_resume", { code: s.code }));
           return;
         }
         const p = asHost
@@ -738,7 +1028,7 @@ const Engine = {
               code: s.code,
               pwHash: s.pwHash || null,
               roomName: s.roomName,
-              displayName: prof.name || "Anfitrión",
+              displayName: prof.name || t("default_host"),
               avatar: prof.avatar,
               user: prof.user,
               restore: s
@@ -746,7 +1036,7 @@ const Engine = {
           : self.joinRoom({
               code: s.code,
               pwHash: s.pwHash || null,
-              displayName: prof.name || "Invitado",
+              displayName: prof.name || t("default_guest"),
               avatar: prof.avatar,
               user: prof.user
             });
@@ -804,7 +1094,7 @@ const Engine = {
 
   installUpdate: function () {
     const up = this.updateAvailable;
-    if (!up || this.updating) return Promise.resolve("No hay ninguna actualización disponible");
+    if (!up || this.updating) return Promise.resolve(t("no_update"));
     const self = this;
     this.updating = true;
     this.emit("update");
@@ -851,7 +1141,7 @@ const Engine = {
         console.warn("[Listen Together] la actualización falló:", e);
         self.updating = false;
         self.emit("update");
-        return "No se pudo actualizar. Inténtalo más tarde.";
+        return t("update_failed");
       });
   },
 
@@ -924,12 +1214,12 @@ const Engine = {
     this.emit("suggestions");
   },
 
-  // ¿Se puede añadir? Devuelve el motivo si no (cuenta también las que aún se están buscando)
+  // ¿Se puede añadir? Devuelve el código del motivo si no (cuenta también las que aún se están buscando)
   checkSuggestion: function (uri, byId) {
-    if (this.suggestions.some(function (s) { return s.uri === uri; })) return "Eso ya está en las sugerencias";
-    if (this.suggestions.length >= SUGGEST_MAX) return "La lista de sugerencias está llena";
+    if (this.suggestions.some(function (s) { return s.uri === uri; })) return "dup";
+    if (this.suggestions.length >= SUGGEST_MAX) return "full";
     const mine = this.suggestions.filter(function (s) { return s.byId === byId; }).length + (this.suggestInflight[byId] || 0);
-    if (mine >= SUGGEST_PER_PEER) return "Has alcanzado el máximo de sugerencias";
+    if (mine >= SUGGEST_PER_PEER) return "max";
     return null;
   },
 
@@ -940,16 +1230,16 @@ const Engine = {
     const pid = conn.peer;
     const ref = parseSpotifyRef(raw && typeof raw === "object" ? raw.uri : null);
     if (!ref) {
-      this.send(conn, { t: "info", msg: "Enlace no válido" });
+      this.sendInfo(conn, "invalid");
       return;
     }
     if ((this.suggestInflight[pid] || 0) >= SUGGEST_INFLIGHT_MAX) {
-      this.send(conn, { t: "info", msg: "Espera un momento antes de sugerir más" });
+      this.sendInfo(conn, "wait");
       return;
     }
     const pre = this.checkSuggestion(ref.uri, pid);
     if (pre) {
-      this.send(conn, { t: "info", msg: pre });
+      this.sendInfo(conn, pre);
       return;
     }
     this.suggestInflight[pid] = (this.suggestInflight[pid] || 0) + 1;
@@ -958,27 +1248,27 @@ const Engine = {
       // Mientras se buscaba pudo irse el invitado o cambiar el anfitrión
       if (!self.isHost || self.connections[pid] !== conn) return;
       const err = self.hostAddSuggestion(meta, pid, member.name);
-      self.send(conn, { t: "info", msg: err || "Sugerencia enviada" });
+      self.sendInfo(conn, err || "sent");
     });
   },
 
-  // Solo el anfitrión modifica la lista; devuelve un mensaje si se rechaza
+  // Solo el anfitrión modifica la lista; devuelve el código del motivo si se rechaza
   hostAddSuggestion: function (raw, byId, byName) {
     const it = cleanSuggestion(raw);
-    if (!it) return "Enlace no válido";
+    if (!it) return "invalid";
     const err = this.checkSuggestion(it.uri, byId);
     if (err) return err;
     it.id = genCode();
     it.byId = byId;
-    it.by = byName || "Alguien";
+    it.by = byName || t("someone");
     this.suggestions = this.suggestions.concat([it]);
     this.broadcastSuggestions();
     return null;
   },
 
   suggest: function (raw) {
-    if (!this.ready) return "No estás en una sala";
-    if (this.isHost) return "El anfitrión no sugiere: pon la música directamente";
+    if (!this.ready) return t("not_in_room");
+    if (this.isHost) return t("host_no_suggest");
     this.sendToHost({ t: "suggest", item: raw });
     return null;
   },
@@ -1008,28 +1298,27 @@ const Engine = {
     }
     try { Spicetify.Player.playUri(it.uri); } catch (e) { console.error(e); }
     this.removeSuggestion(id);
-    this.announce("▶ " + this.localName + " puso " + it.name + " (sugerida por " + it.by + ")");
+    this.announce("played", { actor: this.localName, name: it.name, by: it.by });
   },
 
   // Añade la sugerencia (o todas las canciones del álbum/playlist) a la cola del anfitrión
   queueSuggestion: function (id) {
-    if (!this.isHost) return Promise.resolve("Solo el anfitrión maneja la cola");
+    if (!this.isHost) return Promise.resolve(t("only_host_queue"));
     const self = this;
     const it = this.suggestions.find(function (s) { return s.id === id; });
     if (!it) {
       this.emit("suggestions");
-      return Promise.resolve("Esa sugerencia ya no existe");
+      return Promise.resolve(t("suggestion_gone"));
     }
     return resolveTrackUris(it.uri).then(function (uris) {
       if (!uris.length) throw new Error("vacío");
       return addUrisToQueue(uris).then(function () {
         self.removeSuggestion(id);
-        const extra = uris.length > 1 ? " (" + uris.length + " canciones)" : "";
-        self.announce("➕ " + self.localName + " añadió " + it.name + extra + " a la cola");
+        self.announce(uris.length > 1 ? "queued_many" : "queued", { actor: self.localName, name: it.name, count: uris.length });
         return null;
       });
     }).catch(function () {
-      return "No se pudo añadir a la cola";
+      return t("queue_failed");
     });
   },
 
@@ -1053,17 +1342,17 @@ const Engine = {
   },
 
   makePeer: function (id) {
-    if (!window.Peer) throw new Error("PeerJS no disponible");
+    if (!window.Peer) throw new Error(t("err_no_peerjs"));
     return new window.Peer(id, { debug: 0, config: { iceServers: ICE } });
   },
 
   attach: function (peer) {
     const self = this;
     peer.on("error", function (err) {
-      let msg = "Error de conexión P2P";
-      if (err.type === "peer-unavailable") msg = "No existe ninguna sala con ese ID";
-      else if (err.type === "network" || err.type === "server-error") msg = "Sin conexión con el servicio de señalización";
-      else if (err.type === "unavailable-id") msg = "ID de sala en uso, intenta crearla otra vez";
+      let msg = t("err_p2p");
+      if (err.type === "peer-unavailable") msg = t("err_no_room");
+      else if (err.type === "network" || err.type === "server-error") msg = t("err_signal");
+      else if (err.type === "unavailable-id") msg = t("err_id_taken");
       if (!self.resuming && !self.reconnecting) self.emit("error", msg);
       if (self.joinRej) {
         const r = self.joinRej;
@@ -1112,8 +1401,8 @@ const Engine = {
     const self = this;
     this.resetPeer();
     this.code = opts.code || genCode();
-    this.roomName = cleanText(opts.roomName, 60) || "Sala";
-    this.localName = cleanName(opts.displayName) || "Anfitrión";
+    this.roomName = cleanText(opts.roomName, 60) || t("room");
+    this.localName = cleanName(opts.displayName) || t("default_host");
     this.localAvatar = opts.avatar || null;
     this.localUser = opts.user || null;
     this.pwHash = opts.pwHash !== undefined ? opts.pwHash : (opts.password ? hashStr(opts.password) : null);
@@ -1157,8 +1446,8 @@ const Engine = {
     const self = this;
     this.resetPeer();
     this.code = String(opts.code || "").trim().toUpperCase();
-    if (!/^[A-Z0-9]{4,16}$/.test(this.code)) return Promise.reject(new Error("El ID de la sala no es válido"));
-    this.localName = cleanName(opts.displayName) || "Invitado";
+    if (!/^[A-Z0-9]{4,16}$/.test(this.code)) return Promise.reject(new Error(t("err_bad_id")));
+    this.localName = cleanName(opts.displayName) || t("default_guest");
     this.localAvatar = opts.avatar || null;
     this.localUser = opts.user || null;
     this.pwHash = opts.pwHash !== undefined ? opts.pwHash : (opts.password ? hashStr(opts.password) : null);
@@ -1195,7 +1484,7 @@ const Engine = {
         if (self.joinRej) {
           const r = self.joinRej;
           self.joinRej = null;
-          r(new Error("Tiempo agotado. Comprueba que la sala exista y esté abierta."));
+          r(new Error(t("err_timeout")));
         }
       }, 12000);
     });
@@ -1261,10 +1550,18 @@ const Engine = {
   },
 
   // Rechaza a alguien. Con retry, quien estaba volviendo a la sala lo sigue intentando.
-  deny: function (conn, msg, retry) {
+  // El texto va en español para las versiones anteriores; las nuevas usan el código.
+  deny: function (conn, code, retry) {
     this.unauth.delete(conn);
-    this.send(conn, retry ? { t: "deny", msg: msg, retry: true } : { t: "deny", msg: msg });
+    const msg = { t: "deny", msg: tr("es", "deny_" + code), code: code };
+    if (retry) msg.retry = true;
+    this.send(conn, msg);
     setTimeout(function () { try { conn.close(); } catch (e) {} }, 300);
+  },
+
+  // Aviso para un invitado (resultado de una sugerencia), con el mismo esquema que deny
+  sendInfo: function (conn, code) {
+    this.send(conn, { t: "info", msg: tr("es", "info_" + code), code: code });
   },
 
   // Contraseñas: como mucho PW_FAIL_MAX fallos por minuto entre todos; después, un minuto de bloqueo
@@ -1289,12 +1586,12 @@ const Engine = {
       // Un solo saludo por conexión
       if (this.connections[pid] === conn) return;
       if (Date.now() < this.pwLockUntil) {
-        this.deny(conn, "Demasiados intentos con contraseña incorrecta. Espera un minuto.", true);
+        this.deny(conn, "locked", true);
         return;
       }
       if (this.pwHash && this.pwHash !== (typeof m.pwh === "string" ? m.pwh : null)) {
         this.notePwFailure();
-        this.deny(conn, "Contraseña incorrecta");
+        this.deny(conn, "password");
         return;
       }
       // ¿Es alguien que vuelve con otra conexión (p. ej. reabrió Spotify)? Se reemplaza su entrada vieja
@@ -1310,7 +1607,7 @@ const Engine = {
         });
       const known = this.participants.some(function (p) { return p.id === pid; });
       if (!stale.length && !known && this.participants.length >= MAX_PARTICIPANTS) {
-        this.deny(conn, "La sala está llena", true);
+        this.deny(conn, "full", true);
         return;
       }
       stale.forEach(function (id) {
@@ -1324,7 +1621,7 @@ const Engine = {
       if (!known) {
         this.participants.push({
           id: pid,
-          name: cleanName(m.name) || "Invitado",
+          name: cleanName(m.name) || t("default_guest"),
           avatar: safeAvatar(m.avatar),
           user: user,
           ver: cleanNumber(m.v, 0, 1000) || 0,
@@ -1364,7 +1661,7 @@ const Engine = {
     }
     if (m.t === "suggest") {
       if (!allowRate(this.rate, pid + ":suggest", 10, 0.5)) {
-        this.send(conn, { t: "info", msg: "Espera un momento antes de sugerir más" });
+        this.sendInfo(conn, "wait");
         return;
       }
       this.hostSuggestFromGuest(conn, member, m.item);
@@ -1408,7 +1705,7 @@ const Engine = {
   handleGuestMsg: function (conn, m) {
     if (m.t === "welcome") {
       // El código es el de la sala a la que se entró: el anfitrión no lo cambia
-      this.roomName = cleanText(m.roomName, 60) || "Sala";
+      this.roomName = cleanText(m.roomName, 60) || t("room");
       this.hostId = cleanPeerId(m.hostId) || conn.peer;
       this.participants = cleanParticipants(m.list);
       this.suggestions = cleanSuggestionList(m.suggestions);
@@ -1446,7 +1743,7 @@ const Engine = {
       return;
     }
     if (m.t === "info") {
-      const info = cleanText(m.msg, 120);
+      const info = typeof m.code === "string" && INFO_CODES.has(m.code) ? t("info_" + m.code) : cleanText(m.msg, 120);
       if (info && allowRate(this.rate, "host:info", 5, 1)) Spicetify.showNotification(info);
       return;
     }
@@ -1483,7 +1780,9 @@ const Engine = {
       return;
     }
     if (m.t === "deny") {
-      const err = new Error(cleanText(m.msg, 120) || "Acceso denegado");
+      const err = new Error(typeof m.code === "string" && DENY_CODES.has(m.code)
+        ? t("deny_" + m.code)
+        : cleanText(m.msg, 120) || t("denied"));
       // Con retry (sala llena o bloqueada un momento) se sigue intentando volver a la sala
       err.denied = m.retry !== true;
       if (!err.denied && (this.resuming || this.reconnecting)) return;
@@ -1640,11 +1939,13 @@ const Engine = {
     this.emit("role");
   },
 
-  // Mensaje de sistema en el chat (solo lo genera el anfitrión)
-  announce: function (text) {
-    const msg = { t: "chat", sys: true, text: text, ts: Date.now() };
-    this.addChat(msg);
-    this.sendAll(msg);
+  // Mensaje de sistema en el chat (solo lo genera el anfitrión). Cada uno lo ve en su idioma a
+  // partir del código; el texto en español es para las versiones anteriores.
+  announce: function (code, args) {
+    const clean = cleanSysArgs(args);
+    const ts = Date.now();
+    this.addChat({ t: "chat", sys: true, text: t("sys_" + code, clean), code: code, args: clean, ts: ts });
+    this.sendAll({ t: "chat", sys: true, text: tr("es", "sys_" + code, clean), code: code, args: clean, ts: ts });
   },
 
   // El anfitrión anuncia pausas/reanudaciones reales, con el nombre de quien las hizo
@@ -1656,7 +1957,7 @@ const Engine = {
       : this.localName;
     this.controlActor = null;
     if (this.lastAnnounced !== null && playing !== this.lastAnnounced) {
-      this.announce((playing ? "▶ " : "⏸ ") + actor + (playing ? " reanudó la canción" : " pausó la canción"));
+      this.announce(playing ? "resumed" : "paused", { actor: actor });
     }
     this.lastAnnounced = playing;
   },
@@ -1725,8 +2026,8 @@ const Engine = {
 // Obtiene los datos de cada URI y la propone a la sala; devuelve el primer error, si lo hay
 function suggestUris(uris) {
   const refs = (uris || []).map(parseSpotifyRef).filter(Boolean);
-  if (!refs.length) return Promise.resolve("Solo se pueden sugerir canciones, álbumes o playlists");
-  if (!Engine.ready) return Promise.resolve("No estás en una sala");
+  if (!refs.length) return Promise.resolve(t("only_suggestable"));
+  if (!Engine.ready) return Promise.resolve(t("not_in_room"));
   return Promise.all(refs.slice(0, 10).map(function (r) { return fetchItemMeta(r.uri); }))
     .then(function (items) {
       let err = null;
@@ -1742,7 +2043,7 @@ function registerContextMenu() {
   if (!Spicetify.ContextMenu || window.__ltSuggestMenu) return;
   window.__ltSuggestMenu = true;
   new Spicetify.ContextMenu.Item(
-    "Sugerir en Listen Together",
+    t("menu_suggest"),
     function (uris) {
       suggestUris(uris).then(function (err) {
         // El invitado recibe la confirmación del anfitrión; aquí solo se avisa de errores o del anfitrión
@@ -1818,6 +2119,46 @@ function addPlayerHooks() {
   });
 }
 
+// ---------- Botón en la barra superior de Spotify ----------
+// Verde mientras estás en una sala y ámbar mientras se reconecta; al pulsarlo abre la app
+const TOPBAR_ICON = '<svg role="img" height="16" width="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+  '<path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>';
+const TOPBAR_COLORS = { room: "#1ed760", wait: "#ffa42b", idle: "" };
+let topbarButton = null;
+let topbarShown = "";
+
+function updateTopbar() {
+  if (!topbarButton) return;
+  const status = Engine.ready && Engine.peer ? "room"
+    : Engine.reconnecting || Engine.resuming ? "wait"
+    : "idle";
+  const n = status === "room" ? Engine.participants.length : 0;
+  const key = status + ":" + n + ":" + getLang();
+  if (key === topbarShown) return;
+  topbarShown = key;
+  try {
+    (topbarButton.button || topbarButton.element).style.color = TOPBAR_COLORS[status];
+    topbarButton.label = status === "room" ? (n > 1 ? t("topbar_room_many", { n: n }) : t("topbar_room_one"))
+      : status === "wait" ? t("topbar_wait")
+      : t("topbar_idle");
+  } catch (e) {}
+}
+
+function setupTopbar() {
+  if (topbarButton || !Spicetify.Topbar || !Spicetify.Topbar.Button) return;
+  try {
+    topbarButton = new Spicetify.Topbar.Button(t("topbar_idle"), TOPBAR_ICON, function () {
+      try { Spicetify.Platform.History.push("/listen-together"); } catch (e) {}
+    });
+  } catch (e) {
+    topbarButton = null;
+    return;
+  }
+  updateTopbar();
+  // Por si algún cambio de estado no pasa por emit()
+  setInterval(updateTopbar, 3000);
+}
+
 function init() {
   if (!window.Spicetify || !Spicetify.Player || !Spicetify.Player.addEventListener ||
       !Spicetify.Platform || !Spicetify.CosmosAsync || !window.Peer) {
@@ -1828,7 +2169,8 @@ function init() {
   window.ListenTogether = {
     Engine: Engine,
     APP_VERSION: APP_VERSION,
-    SUGGEST_TYPES: SUGGEST_TYPES,
+    t: t,
+    lang: getLang,
     hashStr: hashStr,
     genCode: genCode,
     safeAvatar: safeAvatar,
@@ -1848,6 +2190,7 @@ function init() {
   };
   addPlayerHooks();
   registerContextMenu();
+  setupTopbar();
   Engine.resumeSession();
   // La versión descargada arrancó bien: se quita la marca de "arrancando"
   if (window.__LT_OVERRIDE_RUNNING) {

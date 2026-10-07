@@ -1,10 +1,10 @@
 {
-  "version": 8,
-  "notes": "Más seguridad: validación de todo lo que llega por la red, límites contra spam y contraseñas, y actualizaciones firmadas",
+  "version": 9,
+  "notes": "Inglés y español según el idioma de Spotify, y un botón en la barra superior que se pone verde mientras estás en una sala",
   "files": {
-    "engine": "69dc08ab7b937100cba37bd09da75bfee85485be2cdd1c79d88a90a394674e97",
-    "ui": "03b298ec78a2e2c59bbdbc1d52cea8a23d69580e2ba0c86a40561cca8554ddf5",
+    "engine": "66f829dac8861cb2bff5cf947c71ee905bf553587f3395daea6fccdcd5ae884a",
+    "ui": "60a92d75b67f550b036d0197b8bb984a77962aa1f6dc51d30c5cdef67775827b",
     "css": "7e1c94301c4055da24f5485b16bf2340f670f9090383c53bcf6ef3394ed57693"
   },
-  "sig": "31mEyB4Q7BnUnRrwLVl1JKOH3GtjCTNJBV43PbMuWJ5CCHnBV7ShmynCulg3FuZfT4NcgOtcBZ6hrI/N5N9PJQ=="
+  "sig": "b87m0vwhDGObqoamMkZuj3rmxeH50goc2eiZfPP5JlJnl9smEAgRc1lZOKJGOCwUL2YbuQ5x7NQKfqecpuJ8zQ=="
 }

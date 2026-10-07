@@ -16,6 +16,8 @@ App para [Spicetify](https://spicetify.app) que permite escuchar la misma músic
 - **Perfiles:** foto y nombre de Spotify de cada persona; al hacer clic se abre su perfil.
 - **Actualización con un clic** desde Spotify cuando hay una versión nueva en este repositorio.
 - **Reanudación automática:** si se cierra Spotify estando en una sala, al volver a abrirlo se retoma la misma sala. Los invitados esperan hasta 3 minutos a que el anfitrión vuelva.
+- **Botón en la barra superior de Spotify:** se pone verde mientras estás en una sala (ámbar si se está reconectando) y al pulsarlo abre la app.
+- **En español o inglés**, según el idioma de Spotify.
 - El anfitrión puede expulsar a alguien o pasarle el control de la sala.
 
 ## Cambios respecto al original
@@ -31,6 +33,8 @@ Esta versión añade:
 - **Actualización con un clic**, y aviso de *"Versión antigua de la app"* para quien no actualizó.
 - **Seguridad reforzada** y actualizaciones firmadas: ver [Seguridad](#seguridad).
 - **Instalador** de un solo comando para Windows, macOS y Linux.
+- **Inglés y español**, según el idioma de Spotify.
+- **Botón en la barra superior** que se pone verde mientras estás en una sala.
 
 ## Requisitos
 
