@@ -6,7 +6,7 @@
 // Red de seguridad: si la descargada no arranca, se descarta y se vuelve a la instalada.
 (function () {
   if (window.__LT_OVERRIDE_RUNNING) return; // este código ya es la versión descargada
-  var BUILD = 11;
+  var BUILD = 12;
   var KEY = "listen-together:update";
   var BOOT = "listen-together:update-booting";
   try {
@@ -800,7 +800,7 @@ function fmt(ms) {
 // Desfase tolerado antes de corregir la posición del invitado
 const DRIFT_MS = 1000;
 // Se envía en el "hello" para detectar invitados con una versión vieja de la app
-const APP_VERSION = 11;
+const APP_VERSION = 12;
 
 // Límites contra abusos de quien tenga el código de la sala
 const MAX_PENDING = 10;            // conexiones que aún no se identificaron
@@ -2154,23 +2154,49 @@ function setupTopbar() {
     topbarButton = null;
     return;
   }
-  hideNavLink();
+  fixHistoryButtons();
+  syncNavLink();
   updateTopbar();
-  // Por si algún cambio de estado no pasa por emit()
-  setInterval(updateTopbar, 3000);
+  // Por si algún cambio de estado no pasa por emit(), o Spotify vuelve a dibujar la barra
+  setInterval(function () {
+    fixHistoryButtons();
+    syncNavLink();
+    updateTopbar();
+  }, 3000);
 }
 
-// Con el botón pequeño ya no hace falta el acceso grande que Spicetify añade a la navegación
-// para cada custom app. Solo se oculta si el botón pequeño existe, para no quedar sin acceso.
-function hideNavLink() {
+// Spicetify coloca los botones pequeños junto a los de atrás/adelante y espera encontrarlos con la
+// clase "main-globalNav-historyButtons". Si su mapa de clases no cubre esta versión de Spotify, esa
+// clase no existe y el botón nunca aparece; se la ponemos al contenedor correcto.
+function fixHistoryButtons() {
   try {
-    if (document.getElementById("lt-hide-navlink")) return;
-    const st = document.createElement("style");
-    st.id = "lt-hide-navlink";
-    st.textContent =
-      '.custom-navlink[aria-label="Listen Together"],' +
-      'li.main-yourLibraryX-navItem:has([aria-label="Listen Together"]) { display: none !important; }';
-    (document.head || document.documentElement).appendChild(st);
+    if (document.querySelector(".main-globalNav-historyButtons, .main-topBar-historyButtons")) return;
+    const wrapper = document.querySelector(".main-globalNav-historyButtonsWrapper");
+    if (!wrapper) return;
+    const box = Array.prototype.find.call(wrapper.children, function (el) {
+      return el.querySelector("[data-encore-id='buttonTertiary']");
+    });
+    if (box) box.classList.add("main-globalNav-historyButtons");
+  } catch (e) {}
+}
+
+// Con el botón pequeño ya no hace falta el acceso grande que Spicetify añade a la navegación para
+// cada custom app. Solo se oculta mientras el botón pequeño se ve de verdad: si Spotify cambia su
+// barra y el botón desaparece, el acceso grande vuelve para no quedarse sin forma de abrir la app.
+function syncNavLink() {
+  try {
+    const el = topbarButton && topbarButton.element;
+    const visible = !!(el && el.isConnected && el.getClientRects().length);
+    let st = document.getElementById("lt-hide-navlink");
+    if (!st) {
+      st = document.createElement("style");
+      st.id = "lt-hide-navlink";
+      st.textContent =
+        '.custom-navlink[aria-label="Listen Together"],' +
+        'li.main-yourLibraryX-navItem:has([aria-label="Listen Together"]) { display: none !important; }';
+      (document.head || document.documentElement).appendChild(st);
+    }
+    st.disabled = !visible;
   } catch (e) {}
 }
 

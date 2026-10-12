@@ -1,10 +1,10 @@
 {
-  "version": 11,
-  "notes": "Spotify ya no ofrece guardar la contraseña de la sala al unirte o crearla",
+  "version": 12,
+  "notes": "Arreglo para Spotify 1.3.4: el botón de la barra superior vuelve a aparecer y la app ya no se queda sin acceso",
   "files": {
-    "engine": "918b35b00fc469bc5c5300f7c1f82031302a219dffcc15440bd1052896409b2b",
-    "ui": "985242f2b6ea27e4f3c3f8a1bcde88ff330d6ad2b0009e1b37993e956b020fab",
+    "engine": "6bcd589fc18f8cd680de9b5273acb3c782f61d67d68478e387b70f430dde01f7",
+    "ui": "4a644f68f43fc703cbef4da27e23197a799f56235b9f274bf0870ace4e97f9bd",
     "css": "7e1c94301c4055da24f5485b16bf2340f670f9090383c53bcf6ef3394ed57693"
   },
-  "sig": "DGOt/wXcnU+dMp3Y1HFBp3rJWdwwE5cvt5W2GAyiN38YifnaREYDL+SfPDUnzpUbd/jWvfIApER07gtaD/A25Q=="
+  "sig": "u1AU5Cx4NuIolyHjEAptIqQRX4ihS2enx7yBuJ1D87st1pZtf/pwqki3npKyToXSht3yBa4BgVjsrO4GN2kRAw=="
 }
