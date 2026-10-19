@@ -1,10 +1,10 @@
 {
-  "version": 12,
-  "notes": "Arreglo para Spotify 1.3.4: el botón de la barra superior vuelve a aparecer y la app ya no se queda sin acceso",
+  "version": 13,
+  "notes": "La sala ya no aparece desplazada hacia abajo al crearla o entrar",
   "files": {
-    "engine": "6bcd589fc18f8cd680de9b5273acb3c782f61d67d68478e387b70f430dde01f7",
-    "ui": "4a644f68f43fc703cbef4da27e23197a799f56235b9f274bf0870ace4e97f9bd",
+    "engine": "c38dd3a8cf32028f134f54356d48b86aa1bc36c3bdaa4f12a897b2f90f00073f",
+    "ui": "8130d7784792c8344c759eaac1be26bfd60ef4c18a52b2854f4a014de02d631d",
     "css": "7e1c94301c4055da24f5485b16bf2340f670f9090383c53bcf6ef3394ed57693"
   },
-  "sig": "u1AU5Cx4NuIolyHjEAptIqQRX4ihS2enx7yBuJ1D87st1pZtf/pwqki3npKyToXSht3yBa4BgVjsrO4GN2kRAw=="
+  "sig": "qbsAcu5a/Js0OQjeN5G+hPo9F9RTFg3QNpC8R083WkZgx4sDimEvLNIx1uCthC1ozs9b2ltZRaFRtgaTvEgjWQ=="
 }

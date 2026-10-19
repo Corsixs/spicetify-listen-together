@@ -4,7 +4,7 @@ const react = Spicetify.React;
 const { useState, useEffect, useRef } = react;
 
 // Debe coincidir con APP_VERSION de engine.js
-const UI_BUILD = 12;
+const UI_BUILD = 13;
 const UPDATE_KEY = "listen-together:update";
 const UPDATE_BOOT_KEY = "listen-together:update-booting";
 
@@ -256,8 +256,10 @@ function App() {
     return function () { clearInterval(iv); };
   }, []);
 
+  // Baja solo la caja del chat: scrollIntoView también desplazaba toda la página de Spotify
   useEffect(function () {
-    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    const log = chatEndRef.current && chatEndRef.current.parentElement;
+    if (log) log.scrollTo({ top: log.scrollHeight, behavior: "smooth" });
   }, [chat]);
 
   function resetToLobby() {
